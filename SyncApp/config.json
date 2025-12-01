@@ -1,0 +1,46 @@
+{
+  "settings": {
+    "run_mode": "polling",
+    "poll_interval_seconds": 10
+  },
+  "systems": {
+    "topdesk_prod": {
+      "type": "topdesk",
+      "url": "https://mock.topdesk.net",
+      "auth_type": "basic",
+      "username": "admin",
+      "password": "password"
+    },
+    "ado_dev": {
+      "type": "azure_devops",
+      "url": "https://dev.azure.com/mock-org",
+      "auth_type": "pat",
+      "token": "mock_token",
+      "defaults": {
+        "project": "ProjectA"
+      }
+    }
+  },
+  "mappings": [
+    {
+      "name": "Incident to Bug - Project A",
+      "source_system": "topdesk_prod",
+      "target_system": "ado_dev",
+      "source_object": "incident",
+      "target_object": "Bug",
+      "external_id_field": "Custom.TopDeskId",
+      "fields": [
+        {
+          "source": "briefDescription",
+          "target": "System.Title",
+          "transform": "none"
+        },
+        {
+          "source": "request",
+          "target": "System.Description",
+          "transform": "html_to_markdown"
+        }
+      ]
+    }
+  ]
+}
