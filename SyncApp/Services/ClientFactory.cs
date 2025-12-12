@@ -1,44 +1,42 @@
-using System;
-using System.Net.Http;
-using Microsoft.Extensions.Logging;
+using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
+using Microsoft.VisualStudio.Services.Common;
+using Microsoft.VisualStudio.Services.WebApi;
 using RestSharp;
 using SyncApp.Interfaces;
 using SyncApp.Models;
 
-namespace SyncApp.Services
+namespace SyncApp.Services;
+
+public class ClientFactory(IServiceProvider serviceProvider, ILoggerFactory loggerFactory)
 {
-    public class ClientFactory
+    public ISystemClient CreateClient(SystemConfig pConfig, bool pUseMock = false)
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly ILoggerFactory _loggerFactory;
-
-        public ClientFactory(IServiceProvider serviceProvider, ILoggerFactory loggerFactory)
+        // If the URL contains "mock", we use the MockClient
+        // We check for "mock" case-insensitively
+        if (pConfig.Url.Contains("mock", StringComparison.OrdinalIgnoreCase))
         {
-            _serviceProvider = serviceProvider;
-            _loggerFactory = loggerFactory;
+            return new MockClient(pConfig, loggerFactory.CreateLogger<MockClient>());
         }
 
-        public ISystemClient CreateClient(SystemConfig config, bool useMock = false)
+        return pConfig.Type.ToLower() switch
         {
-            // If the URL contains "mock", we use the MockClient
-            // We check for "mock" case-insensitively
-            if (config.Url.Contains("mock", StringComparison.OrdinalIgnoreCase))
-            {
-                return new MockClient(config, _loggerFactory.CreateLogger<MockClient>());
-            }
+            "topdesk" => new TopDeskClient(pConfig, serviceProvider.GetRequiredService<IRestClient>(), loggerFactory.CreateLogger<TopDeskClient>()),
+            "azure_devops" => CreateAzureDevOpsClient(pConfig),
+            _ => new MockClient(pConfig, loggerFactory.CreateLogger<MockClient>()),// Fallback or throw
+        };
+    }
 
-            return config.Type.ToLower() switch
-            {
-                "topdesk" => new TopDeskClient(config, new RestClient(), _loggerFactory.CreateLogger<TopDeskClient>()),
-                "azure_devops" => new AzureDevOpsClient(config, new HttpClient(), _loggerFactory.CreateLogger<AzureDevOpsClient>()),
-                _ => new MockClient(config, _loggerFactory.CreateLogger<MockClient>()),// Fallback or throw
-            };
+    private AzureDevOpsClient CreateAzureDevOpsClient(SystemConfig pConfig)
+    {
+        if (string.IsNullOrEmpty(pConfig.Url) || string.IsNullOrEmpty(pConfig.Token))
+        {
+            throw new InvalidOperationException($"Configuration for Azure DevOps system (URL: {pConfig.Url}) is missing URL or Token.");
         }
 
-        // Overload to force mock if needed, or we can handle it inside.
-        public ISystemClient CreateMockClient(SystemConfig config)
-        {
-             return new MockClient(config, _loggerFactory.CreateLogger<MockClient>());
-        }
+        //TODO: Personal access tokens are being deprecated
+        var credentials = new VssBasicCredential(string.Empty, pConfig.Token); // Standard für PAT: Benutzername ist leer
+        var connection = new VssConnection(new Uri(pConfig.Url), credentials);
+        var witClient = connection.GetClient<WorkItemTrackingHttpClient>();
+        return new AzureDevOpsClient(pConfig, witClient, loggerFactory.CreateLogger<AzureDevOpsClient>());
     }
 }

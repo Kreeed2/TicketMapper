@@ -4,6 +4,7 @@ using RestSharp;
 using SyncApp.Models;
 using SyncApp.Services;
 using SyncApp.Interfaces;
+using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 
 namespace SyncApp
 {
@@ -49,17 +50,17 @@ namespace SyncApp
                         });
                     });
 
-                    // Optional: register a delegate factory to create RestClient instances with a specific base URL
-                    services.AddSingleton<Func<string, RestClient>>(provider => baseUrl =>
-                    {
-                        var options = new RestClientOptions
-                        {
-                            BaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? null : new Uri(baseUrl),
-                            ThrowOnAnyError = false,
-                            FollowRedirects = true
-                        };
-                        return new RestClient(options);
-                    });
+                    //// Optional: register a delegate factory to create RestClient instances with a specific base URL
+                    //services.AddSingleton<Func<string, RestClient>>(provider => baseUrl =>
+                    //{
+                    //    var options = new RestClientOptions
+                    //    {
+                    //        BaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? null : new Uri(baseUrl),
+                    //        ThrowOnAnyError = false,
+                    //        FollowRedirects = true
+                    //    };
+                    //    return new RestClient(options);
+                    //});
 
                     services.AddSingleton<ITransformer, Transformer>();
                     services.AddSingleton<ClientFactory>();

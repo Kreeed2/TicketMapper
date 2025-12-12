@@ -1,74 +1,126 @@
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
+using Microsoft.VisualStudio.Services.WebApi.Patch;
+using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
 using SyncApp.Interfaces;
 using SyncApp.Models;
+using static Microsoft.VisualStudio.Services.Graph.Constants;
 
-namespace SyncApp.Services
+namespace SyncApp.Services;
+
+public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient pWitClient, ILogger<AzureDevOpsClient> pLogger) : ISystemClient
 {
-    public class AzureDevOpsClient : ISystemClient
+    public string SystemName => "azure_devops";
+
+    public async Task<bool> ValidateFieldExistsAsync(string pObjectType, string pFieldName)
     {
-        private readonly SystemConfig _config;
-        private readonly HttpClient _httpClient;
-        private readonly ILogger<AzureDevOpsClient> _logger;
-
-        public string SystemName => "azure_devops";
-
-        public AzureDevOpsClient(SystemConfig config, HttpClient httpClient, ILogger<AzureDevOpsClient> logger)
+        pLogger.LogInformation("Validating field {fieldName} on ADO WorkItem {objectType}.", pFieldName, pObjectType);
+        if (!pConfig.Defaults.TryGetValue("project", out var project))
         {
-            _config = config;
-            _httpClient = httpClient;
-            _logger = logger;
+            pLogger.LogError("Azure DevOps SystemConfig is missing the required 'project' setting.");
+            return false;
+        }
 
-            if (!string.IsNullOrEmpty(_config.Token))
+        try
+        {
+            // Versucht, die Feldbeschreibung abzurufen.
+            // Wenn das Feld nicht existiert, wird eine Ausnahme ausgelöst ( typically VssServiceException).
+            var field = await pWitClient.GetWorkItemTypeFieldAsync(
+                project: project,
+                type: pObjectType, // z.B. "Bug"
+                field: pFieldName // z.B. "Custom.TopDeskId"
+            );
+
+            // Wenn der Aufruf erfolgreich ist, existiert das Feld
+            pLogger.LogInformation("Field '{objectType}' successfully validated on '{fieldName}' in project '{project}'.", pObjectType, pFieldName, project);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Nur wenn das Feld nicht gefunden wird
+            // Eine VssServiceException (mit HTTP 404) würde hier landen.
+            pLogger.LogError(ex, "Field '{objectType}' successfully validated on '{fieldName}' in project '{project}'.", pObjectType, pFieldName, project);
+            return false;
+        }
+    }
+
+    public async Task<IEnumerable<SyncItem>> GetChangesAsync(string objectType)
+    {
+        // WIQL query to get recent items
+        pLogger.LogInformation($"Fetching changes from ADO for {objectType}");
+        pLogger.LogWarning("Real ADO API implementation incomplete. Returning empty list.");
+        return await Task.FromResult(new List<SyncItem>());
+    }
+
+    public async Task<SyncItem?> GetItemByExternalIdAsync(string objectType, string externalIdField, string externalIdValue)
+    {
+        pLogger.LogInformation($"Searching ADO {objectType} for {externalIdField} = {externalIdValue}");
+        // WIQL Query: Select [System.Id] From WorkItems Where [WorkItemType] = '{objectType}' AND [{externalIdField}] = '{externalIdValue}'
+        return await Task.FromResult<SyncItem?>(null);
+    }
+
+    public async Task<string> CreateItemAsync(string pObjectType, SyncItem pItem, string pExternalIdField, string pExternalIdValue)
+    {
+        pLogger.LogInformation("Creating ADO {objectType} with external ID {externalIdValue}", pObjectType, pExternalIdField);
+
+        if (!pConfig.Defaults.TryGetValue("project", out var project))
+        {
+            pLogger.LogError("Azure DevOps SystemConfig is missing the required 'project' setting.");
+            throw new InvalidOperationException("Project not configured for ADO client.");
+        }
+
+        try
+        {
+            // 1. Erstellen des JSON Patch Dokuments
+            var patchDocument = new JsonPatchDocument();
+
+            // 2. Fügen Sie alle gemappten Felder aus dem SyncItem hinzu
+            foreach (var field in pItem.Fields)
             {
-                var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{_config.Token}"));
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", auth);
+                // Alle Felder werden als 'add'-Operationen hinzugefügt
+                patchDocument.Add(new JsonPatchOperation()
+                {
+                    Operation = Operation.Add,
+                    Path = $"/fields/{field.Key}",
+                    Value = field.Value
+                });
             }
-            if (Uri.TryCreate(_config.Url, UriKind.Absolute, out var uri))
+
+            // 3. Fügen Sie das externe ID-Feld hinzu, das die ID des Source-Systems speichert
+            patchDocument.Add(new JsonPatchOperation()
             {
-                _httpClient.BaseAddress = uri;
+                Operation = Operation.Add,
+                Path = $"/fields/{pExternalIdField}",
+                Value = pExternalIdValue
+            });
+
+            // 4. API-Aufruf zur Erstellung des Work Items
+            var newWorkItem = await pWitClient.CreateWorkItemAsync(
+                document: patchDocument,
+                project: project,
+                type: pObjectType,
+                validateOnly: false, // Auf 'true' setzen, um nur die Validierung durchzuführen
+                bypassRules: false // Auf 'true' setzen, um Regeln zu umgehen (nur für Admins)
+            );
+
+            if (newWorkItem.Id.HasValue)
+            {
+                pLogger.LogInformation("Successfully created ADO {objectType} ID: {newWorkItem.Id.Value} in project {project}.", pObjectType, newWorkItem.Id.Value, project);
+                return newWorkItem.Id.Value.ToString();
             }
-        }
 
-        public async Task<bool> ValidateFieldExistsAsync(string objectType, string fieldName)
-        {
-             _logger.LogInformation($"Validating field {fieldName} on ADO WorkItem {objectType}.");
-            // Check ADO WorkItem definitions
-            return await Task.FromResult(true);
+            pLogger.LogError("ADO API call was successful but new Work Item ID is missing.");
+            return string.Empty;
         }
+        catch (Exception ex)
+        {
+            pLogger.LogError(ex, "Error creating ADO {objectType} in project {project}.", pObjectType, project);
+            throw; // Werfen Sie die Ausnahme, damit der Worker den Fehler protokollieren kann
+        }
+    }
 
-        public async Task<IEnumerable<SyncItem>> GetChangesAsync(string objectType)
-        {
-            // WIQL query to get recent items
-            _logger.LogInformation($"Fetching changes from ADO for {objectType}");
-            _logger.LogWarning("Real ADO API implementation incomplete. Returning empty list.");
-            return await Task.FromResult(new List<SyncItem>());
-        }
-
-        public async Task<SyncItem?> GetItemByExternalIdAsync(string objectType, string externalIdField, string externalIdValue)
-        {
-             _logger.LogInformation($"Searching ADO {objectType} for {externalIdField} = {externalIdValue}");
-            // WIQL Query: Select [System.Id] From WorkItems Where [WorkItemType] = '{objectType}' AND [{externalIdField}] = '{externalIdValue}'
-            return await Task.FromResult<SyncItem?>(null);
-        }
-
-        public async Task<string> CreateItemAsync(string objectType, SyncItem item, string externalIdField, string externalIdValue)
-        {
-             _logger.LogInformation($"Creating ADO {objectType}");
-            // POST /_apis/wit/workitems/${objectType}?api-version=6.0
-            return await Task.FromResult("NEW_ADO_ID");
-        }
-
-        public async Task UpdateItemAsync(string objectType, string id, SyncItem item)
-        {
-             _logger.LogInformation($"Updating ADO {objectType} {id}");
-            // PATCH /_apis/wit/workitems/{id}?api-version=6.0
-        }
+    public async Task UpdateItemAsync(string objectType, string id, SyncItem item)
+    {
+        pLogger.LogInformation($"Updating ADO {objectType} {id}");
+        // PATCH /_apis/wit/workitems/{id}?api-version=6.0
     }
 }
