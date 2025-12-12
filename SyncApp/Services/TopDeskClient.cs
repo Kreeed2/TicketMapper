@@ -1,90 +1,175 @@
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
+using RestSharp;
+using RestSharp.Authenticators;
 using SyncApp.Interfaces;
 using SyncApp.Models;
+using System.Linq;
+using System.Text.Json;
 
-namespace SyncApp.Services
+namespace SyncApp.Services;
+
+public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<TopDeskClient> logger) : ISystemClient
 {
-    public class TopDeskClient : ISystemClient
+    public string SystemName => "topdesk";
+
+    private RestRequest? CreateBaseRequest(string pUrlPath)
     {
-        private readonly SystemConfig _config;
-        private readonly HttpClient _httpClient;
-        private readonly ILogger<TopDeskClient> _logger;
-
-        public string SystemName => "topdesk";
-
-        public TopDeskClient(SystemConfig config, HttpClient httpClient, ILogger<TopDeskClient> logger)
+        if (Uri.TryCreate(config.Url, UriKind.Absolute, out var baseUrl)
+            && !string.IsNullOrEmpty(config.Username) 
+            && !string.IsNullOrEmpty(config.Password))
         {
-            _config = config;
-            _httpClient = httpClient;
-            _logger = logger;
-
-            if (!string.IsNullOrEmpty(_config.Username) && !string.IsNullOrEmpty(_config.Password))
+            var request = new RestRequest(new Uri(baseUrl, pUrlPath))
             {
-                var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_config.Username}:{_config.Password}"));
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", auth);
-            }
-            if (Uri.TryCreate(_config.Url, UriKind.Absolute, out var uri))
+                Authenticator = new HttpBasicAuthenticator(config.Username, config.Password)
+            };
+
+            return request;
+        }
+        return null;
+    }
+
+    public async Task<bool> ValidateFieldExistsAsync(string objectType, string fieldName)
+    {
+        // Implementation note: TopDesk doesn't have a simple metadata API to check fields for a specific Incident without fetching one.
+        logger.LogInformation("Validating field {fieldName} on TopDesk object {objectType}.", fieldName, objectType);
+        return await Task.FromResult(true);
+    }
+
+    public async Task<IEnumerable<SyncItem>> GetChangesAsync(string objectType)
+    {
+         try
+         {
+            logger.LogInformation("Fetching {objectType} from TopDesk API", objectType);
+            var request = CreateBaseRequest($"/tas/api/{objectType}s");
+
+            if (request is null)
             {
-                _httpClient.BaseAddress = uri;
+                logger.LogError("Error fetching changes from TopDesk: Request could not be created. {req}", request);
+                return [];
             }
-        }
 
-        public async Task<bool> ValidateFieldExistsAsync(string objectType, string fieldName)
-        {
-            // Implementation note: TopDesk doesn't have a simple metadata API to check fields for a specific Incident without fetching one.
-            // For now, we will return true to proceed, or implement a check by fetching one item.
-            // In a real scenario, we might query the metadata endpoint.
-             _logger.LogInformation($"Validating field {fieldName} on TopDesk object {objectType}.");
-            return await Task.FromResult(true);
-        }
+            request.AddQueryParameter("sort", "modificationDate:desc");
+            request.AddQueryParameter("query", "category.name==Zesa;processingStatus.id==160932da-84fb-5bb0-942a-e6be6e1f20e1");
 
-        public async Task<IEnumerable<SyncItem>> GetChangesAsync(string objectType)
-        {
-             // For polling, we would fetch recent items.
-             // GET /tas/api/incidents?query=...
-             // Simplified for implementation
-             try
-             {
-                 _logger.LogWarning("Real TopDesk API implementation incomplete. Returning empty list.");
-                 // var response = await _httpClient.GetAsync($"/tas/api/{objectType}s");
-                 // if (response.IsSuccessStatusCode) ...
-                 return await Task.FromResult(new List<SyncItem>());
-             }
-             catch(Exception ex)
-             {
-                 _logger.LogError(ex, "Error fetching changes from TopDesk");
-             }
+            var response = await httpClient.ExecuteAsync<IEnumerable<Incident>>(request);
 
-             return new List<SyncItem>();
-        }
+            if (response.IsSuccessStatusCode
+                && response.Data is not null)
+            {
+                return response.Data.Select(MapIncidentToSyncItem);
+            }
+            return [];
+         }
+         catch(Exception ex)
+         {
+             logger.LogError(ex, "Error fetching changes from TopDesk");
+         }
 
-        public async Task<SyncItem?> GetItemByExternalIdAsync(string objectType, string externalIdField, string externalIdValue)
-        {
-            // In TopDesk, searching by custom field often requires a specific query syntax
-            // GET /tas/api/incidents?query=externalIdField==externalIdValue
-             _logger.LogInformation($"Searching TopDesk {objectType} for {externalIdField} = {externalIdValue}");
-            return await Task.FromResult<SyncItem?>(null);
-        }
+        return [];
+    }
 
-        public async Task<string> CreateItemAsync(string objectType, SyncItem item, string externalIdField, string externalIdValue)
-        {
-            _logger.LogInformation($"Creating TopDesk {objectType}");
-            // POST /tas/api/incidents
-            // Body: item.Fields + { externalIdField: externalIdValue }
-            return await Task.FromResult("NEW_ID");
-        }
+    public async Task<SyncItem?> GetItemByExternalIdAsync(string objectType, string externalIdField, string externalIdValue)
+    {
+        // In TopDesk, searching by custom field often requires a specific query syntax
+        // GET /tas/api/incidents?query=externalIdField==externalIdValue
+         logger.LogInformation($"Searching TopDesk {objectType} for {externalIdField} = {externalIdValue}");
+        return await Task.FromResult<SyncItem?>(null);
+    }
 
-        public async Task UpdateItemAsync(string objectType, string id, SyncItem item)
-        {
-             _logger.LogInformation($"Updating TopDesk {objectType} {id}");
-            // PUT /tas/api/incidents/{id}
-        }
+    public async Task<string> CreateItemAsync(string objectType, SyncItem item, string externalIdField, string externalIdValue)
+    {
+        logger.LogInformation($"Creating TopDesk {objectType}");
+        // POST /tas/api/incidents
+        // Body: item.Fields + { externalIdField: externalIdValue }
+        return await Task.FromResult("NEW_ID");
+    }
+
+    public async Task UpdateItemAsync(string objectType, string id, SyncItem item)
+    {
+         logger.LogInformation($"Updating TopDesk {objectType} {id}");
+        // PUT /tas/api/incidents/{id}
+    }
+
+    private static SyncItem MapIncidentToSyncItem(Incident incident)
+    {
+        var fields = new Dictionary<string, object>();
+
+        // Primitive Felder
+        Utilities.AddIfNotNull(fields, "id", incident.Id);
+        Utilities.AddIfNotNull(fields, "status", incident.Status);
+        Utilities.AddIfNotNull(fields, "number", incident.Number);
+        Utilities.AddIfNotNull(fields, "briefDescription", incident.BriefDescription);
+        Utilities.AddIfNotNull(fields, "externalNumber", incident.ExternalNumber);
+        Utilities.AddIfNotNull(fields, "actualDuration", incident.ActualDuration);
+        Utilities.AddIfNotNull(fields, "targetDate", incident.TargetDate);
+        Utilities.AddIfNotNull(fields, "onHold", incident.OnHold);
+        Utilities.AddIfNotNull(fields, "onHoldDuration", incident.OnHoldDuration);
+        Utilities.AddIfNotNull(fields, "responded", incident.Responded);
+        Utilities.AddIfNotNull(fields, "completed", incident.Completed);
+        Utilities.AddIfNotNull(fields, "completedDate", incident.CompletedDate);
+        Utilities.AddIfNotNull(fields, "closed", incident.Closed);
+        Utilities.AddIfNotNull(fields, "closedDate", incident.ClosedDate);
+        Utilities.AddIfNotNull(fields, "timeSpent", incident.TimeSpent);
+        Utilities.AddIfNotNull(fields, "timeSpentFirstLine", incident.TimeSpentFirstLine);
+        Utilities.AddIfNotNull(fields, "timeSpentSecondLine", incident.TimeSpentSecondLine);
+        Utilities.AddIfNotNull(fields, "itemCosts", incident.ItemCosts);
+        Utilities.AddIfNotNull(fields, "objectCosts", incident.ObjectCosts);
+        Utilities.AddIfNotNull(fields, "costs", incident.Costs);
+        Utilities.AddIfNotNull(fields, "callDate", incident.CallDate);
+        Utilities.AddIfNotNull(fields, "creationDate", incident.CreationDate);
+        Utilities.AddIfNotNull(fields, "modificationDate", incident.ModificationDate);
+        Utilities.AddIfNotNull(fields, "majorCall", incident.MajorCall);
+        Utilities.AddIfNotNull(fields, "publishToSsd", incident.PublishToSsd);
+        Utilities.AddIfNotNull(fields, "monitored", incident.Monitored);
+        Utilities.AddIfNotNull(fields, "expectedTimeSpent", incident.ExpectedTimeSpent);
+
+        // Verknüpfte Objekte (nur ID + Name)
+        Utilities.AddIfNotNull(fields, "category.id", incident.Category?.Id);
+        Utilities.AddIfNotNull(fields, "category.name", incident.Category?.Name);
+        Utilities.AddIfNotNull(fields, "subcategory.id", incident.Subcategory?.Id);
+        Utilities.AddIfNotNull(fields, "subcategory.name", incident.Subcategory?.Name);
+        Utilities.AddIfNotNull(fields, "priority.id", incident.Priority?.Id);
+        Utilities.AddIfNotNull(fields, "priority.name", incident.Priority?.Name);
+        Utilities.AddIfNotNull(fields, "duration.id", incident.Duration?.Id);
+        Utilities.AddIfNotNull(fields, "duration.name", incident.Duration?.Name);
+        Utilities.AddIfNotNull(fields, "operator.id", incident.Operator?.Id);
+        Utilities.AddIfNotNull(fields, "operator.name", incident.Operator?.Name);
+        Utilities.AddIfNotNull(fields, "operatorGroup.id", incident.OperatorGroup?.Id);
+        Utilities.AddIfNotNull(fields, "operatorGroup.name", incident.OperatorGroup?.Name);
+        Utilities.AddIfNotNull(fields, "processingStatus.id", incident.ProcessingStatus?.Id);
+        Utilities.AddIfNotNull(fields, "processingStatus.name", incident.ProcessingStatus?.Name);
+        Utilities.AddIfNotNull(fields, "caller.id", incident.Caller?.Id);
+        Utilities.AddIfNotNull(fields, "caller.name", incident.Caller?.DynamicName);
+        Utilities.AddIfNotNull(fields, "caller.email", incident.Caller?.Email);
+        Utilities.AddIfNotNull(fields, "creator.id", incident.Creator?.Id);
+        Utilities.AddIfNotNull(fields, "creator.name", incident.Creator?.Name);
+        Utilities.AddIfNotNull(fields, "modifier.id", incident.Modifier?.Id);
+        Utilities.AddIfNotNull(fields, "modifier.name", incident.Modifier?.Name);
+
+        // Optional Fields (nach Bedarf)
+        AddOptionalFields(fields, incident.OptionalFields1, "optionalFields1");
+        AddOptionalFields(fields, incident.OptionalFields2, "optionalFields2");
+
+        return new SyncItem 
+        { 
+            Id = incident.Id,
+            Fields = fields
+        };
+    }
+
+    private static void AddOptionalFields(Dictionary<string, object> dict, OptionalFields? fields, string prefix)
+    {
+        if (fields is null) return;
+
+        Utilities.AddIfNotNull(dict, $"{prefix}.boolean1", fields.Boolean1);
+        Utilities.AddIfNotNull(dict, $"{prefix}.boolean2", fields.Boolean2);
+        Utilities.AddIfNotNull(dict, $"{prefix}.number1", fields.Number1);
+        Utilities.AddIfNotNull(dict, $"{prefix}.number2", fields.Number2);
+        Utilities.AddIfNotNull(dict, $"{prefix}.text1", fields.Text1);
+        Utilities.AddIfNotNull(dict, $"{prefix}.text2", fields.Text2);
+        Utilities.AddIfNotNull(dict, $"{prefix}.text3", fields.Text3);
+        Utilities.AddIfNotNull(dict, $"{prefix}.text4", fields.Text4);
+        Utilities.AddIfNotNull(dict, $"{prefix}.text5", fields.Text5);
     }
 }

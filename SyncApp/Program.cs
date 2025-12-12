@@ -1,9 +1,6 @@
-using System;
-using System.IO;
 using CommandLine;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
+using RestSharp;
 using SyncApp.Models;
 using SyncApp.Services;
 using SyncApp.Interfaces;
@@ -39,19 +36,38 @@ namespace SyncApp
                         throw new FileNotFoundException("config.json not found", configPath);
                     }
                     var configJson = File.ReadAllText(configPath);
-                    var appConfig = JsonConvert.DeserializeObject<AppConfiguration>(configJson);
-
-                    if (appConfig == null) throw new InvalidOperationException("Failed to load configuration.");
-
+                    var appConfig = JsonConvert.DeserializeObject<AppConfiguration>(configJson)
+                        ?? throw new InvalidOperationException("Failed to load configuration.");
                     services.AddSingleton(appConfig);
+                    services.AddSingleton<IRestClient>(provider =>
+                    {
+                        // Default RestClient without a base URL; ClientFactory can create configured clients per system.
+                        return new RestClient(new RestClientOptions
+                        {
+                            ThrowOnAnyError = false,
+                            FollowRedirects = true
+                        });
+                    });
+
+                    // Optional: register a delegate factory to create RestClient instances with a specific base URL
+                    services.AddSingleton<Func<string, RestClient>>(provider => baseUrl =>
+                    {
+                        var options = new RestClientOptions
+                        {
+                            BaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? null : new Uri(baseUrl),
+                            ThrowOnAnyError = false,
+                            FollowRedirects = true
+                        };
+                        return new RestClient(options);
+                    });
+
                     services.AddSingleton<ITransformer, Transformer>();
                     services.AddSingleton<ClientFactory>();
-                    services.AddHttpClient();
 
                     // Register Worker with options
-                    services.AddHostedService<Worker>(provider =>
+                    services.AddHostedService(provider =>
                         new Worker(
-                            provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Worker>>(),
+                            provider.GetRequiredService<ILogger<Worker>>(),
                             provider.GetRequiredService<ClientFactory>(),
                             provider.GetRequiredService<ITransformer>(),
                             appConfig,

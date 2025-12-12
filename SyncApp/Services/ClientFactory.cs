@@ -1,6 +1,7 @@
 using System;
 using System.Net.Http;
 using Microsoft.Extensions.Logging;
+using RestSharp;
 using SyncApp.Interfaces;
 using SyncApp.Models;
 
@@ -26,16 +27,12 @@ namespace SyncApp.Services
                 return new MockClient(config, _loggerFactory.CreateLogger<MockClient>());
             }
 
-            switch (config.Type.ToLower())
+            return config.Type.ToLower() switch
             {
-                case "topdesk":
-                    return new TopDeskClient(config, new HttpClient(), _loggerFactory.CreateLogger<TopDeskClient>());
-                case "azure_devops":
-                    return new AzureDevOpsClient(config, new HttpClient(), _loggerFactory.CreateLogger<AzureDevOpsClient>());
-                default:
-                     // Fallback or throw
-                     return new MockClient(config, _loggerFactory.CreateLogger<MockClient>());
-            }
+                "topdesk" => new TopDeskClient(config, new RestClient(), _loggerFactory.CreateLogger<TopDeskClient>()),
+                "azure_devops" => new AzureDevOpsClient(config, new HttpClient(), _loggerFactory.CreateLogger<AzureDevOpsClient>()),
+                _ => new MockClient(config, _loggerFactory.CreateLogger<MockClient>()),// Fallback or throw
+            };
         }
 
         // Overload to force mock if needed, or we can handle it inside.

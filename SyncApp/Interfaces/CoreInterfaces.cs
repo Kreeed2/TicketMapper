@@ -15,8 +15,8 @@ namespace SyncApp.Interfaces
 
     public class SyncItem
     {
-        public string? Id { get; set; }
-        public Dictionary<string, object> Fields { get; set; } = new Dictionary<string, object>();
+        public required string Id { get; set; }
+        public Dictionary<string, object> Fields { get; set; } = [];
     }
 
     public interface ITransformer

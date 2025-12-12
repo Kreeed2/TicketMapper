@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace SyncApp.Models
 {
-    public class AppConfiguration
+    public record AppConfiguration
     {
         [JsonProperty("settings")]
         public SettingsConfig Settings { get; set; } = new SettingsConfig();
@@ -15,7 +15,7 @@ namespace SyncApp.Models
         public List<MappingConfig> Mappings { get; set; } = new List<MappingConfig>();
     }
 
-    public class SettingsConfig
+    public record SettingsConfig
     {
         [JsonProperty("run_mode")]
         public string RunMode { get; set; } = "polling";
@@ -24,7 +24,7 @@ namespace SyncApp.Models
         public int PollIntervalSeconds { get; set; } = 30;
     }
 
-    public class SystemConfig
+    public record SystemConfig
     {
         [JsonProperty("type")]
         public string Type { get; set; } = string.Empty;
@@ -48,7 +48,7 @@ namespace SyncApp.Models
         public Dictionary<string, string> Defaults { get; set; } = new Dictionary<string, string>();
     }
 
-    public class MappingConfig
+    public record MappingConfig
     {
         [JsonProperty("name")]
         public string Name { get; set; } = string.Empty;
@@ -72,7 +72,7 @@ namespace SyncApp.Models
         public List<FieldMapping> Fields { get; set; } = new List<FieldMapping>();
     }
 
-    public class FieldMapping
+    public record FieldMapping
     {
         [JsonProperty("source")]
         public string Source { get; set; } = string.Empty;
