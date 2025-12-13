@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace SyncApp.Models;
+namespace SyncApp.Helper;
 
 public class TopDeskDateTimeConverter : JsonConverter<DateTime?>
 {

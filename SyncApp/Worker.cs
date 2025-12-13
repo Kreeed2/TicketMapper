@@ -45,7 +45,7 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
         {
             if (!config.Systems.TryGetValue(mapping.TargetSystem, out var targetSysConfig))
             {
-                logger.LogError($"Target system '{mapping.TargetSystem}' in mapping '{mapping.Name}' is not defined in systems.");
+                logger.LogError("Target system '{targetSysConfig}' in mapping '{name}' is not defined in systems.", targetSysConfig, mapping.Name);
                 return false;
             }
 
@@ -53,7 +53,7 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
             var targetClient = clientFactory.CreateClient(targetSysConfig);
             if (!await targetClient.ValidateFieldExistsAsync(mapping.TargetObject, mapping.ExternalIdField))
             {
-                logger.LogError($"External ID field '{mapping.ExternalIdField}' does not exist on target system '{mapping.TargetSystem}' object '{mapping.TargetObject}'.");
+                logger.LogError("External ID field '{externalIdField}' does not exist on target system '{targetSystem}' object '{targetObject}'.", mapping.ExternalIdField, mapping.TargetSystem, mapping.TargetObject);
                 return false;
             }
         }
@@ -103,11 +103,11 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
                     // Update
                     if (HasChanges(sourceItem, targetItem, mapping))
                     {
-                         logger.LogInformation("Item {id} found in target. Updating...", sourceItem.Id);
-                         if (!dryRun)
-                         {
-                             await targetClient.UpdateItemAsync(mapping.TargetObject, targetItem.Id, targetItemFields);
-                         }
+                        logger.LogInformation("Item {id} found in target. Updating...", sourceItem.Id);
+                        if (!dryRun)
+                        {
+                            await targetClient.UpdateItemAsync(mapping.TargetObject, targetItem.Id, targetItemFields);
+                        }
                     }
                     else
                     {

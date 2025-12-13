@@ -1,11 +1,7 @@
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
 using RestSharp;
 using RestSharp.Authenticators;
 using SyncApp.Interfaces;
 using SyncApp.Models;
-using System.Linq;
-using System.Text.Json;
 
 namespace SyncApp.Services;
 
@@ -16,7 +12,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
     private RestRequest? CreateBaseRequest(string pUrlPath)
     {
         if (Uri.TryCreate(config.Url, UriKind.Absolute, out var baseUrl)
-            && !string.IsNullOrEmpty(config.Username) 
+            && !string.IsNullOrEmpty(config.Username)
             && !string.IsNullOrEmpty(config.Password))
         {
             var request = new RestRequest(new Uri(baseUrl, pUrlPath))
@@ -38,8 +34,8 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
 
     public async Task<IEnumerable<SyncItem>> GetChangesAsync(string objectType)
     {
-         try
-         {
+        try
+        {
             logger.LogInformation("Fetching {objectType} from TopDesk API", objectType);
             var request = CreateBaseRequest($"/tas/api/{objectType}s");
 
@@ -60,11 +56,11 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                 return response.Data.Select(MapIncidentToSyncItem);
             }
             return [];
-         }
-         catch(Exception ex)
-         {
-             logger.LogError(ex, "Error fetching changes from TopDesk");
-         }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching changes from TopDesk");
+        }
 
         return [];
     }
@@ -73,13 +69,13 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
     {
         // In TopDesk, searching by custom field often requires a specific query syntax
         // GET /tas/api/incidents?query=externalIdField==externalIdValue
-         logger.LogInformation($"Searching TopDesk {objectType} for {externalIdField} = {externalIdValue}");
+        logger.LogInformation("Searching TopDesk {objectType} for {externalIdField} = {externalIdValue}", objectType, externalIdField, externalIdValue);
         return await Task.FromResult<SyncItem?>(null);
     }
 
     public async Task<string> CreateItemAsync(string objectType, SyncItem item, string externalIdField, string externalIdValue)
     {
-        logger.LogInformation($"Creating TopDesk {objectType}");
+        logger.LogInformation("Creating TopDesk {objectType}", objectType);
         // POST /tas/api/incidents
         // Body: item.Fields + { externalIdField: externalIdValue }
         return await Task.FromResult("NEW_ID");
@@ -87,7 +83,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
 
     public async Task UpdateItemAsync(string objectType, string id, SyncItem item)
     {
-         logger.LogInformation($"Updating TopDesk {objectType} {id}");
+        logger.LogInformation("Updating TopDesk {objectType} {id}", objectType, id);
         // PUT /tas/api/incidents/{id}
     }
 
@@ -124,7 +120,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         Utilities.AddIfNotNull(fields, "monitored", incident.Monitored);
         Utilities.AddIfNotNull(fields, "expectedTimeSpent", incident.ExpectedTimeSpent);
 
-        // Verknüpfte Objekte (nur ID + Name)
+        // Verknï¿½pfte Objekte (nur ID + Name)
         Utilities.AddIfNotNull(fields, "category.id", incident.Category?.Id);
         Utilities.AddIfNotNull(fields, "category.name", incident.Category?.Name);
         Utilities.AddIfNotNull(fields, "subcategory.id", incident.Subcategory?.Id);
@@ -151,8 +147,8 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         AddOptionalFields(fields, incident.OptionalFields1, "optionalFields1");
         AddOptionalFields(fields, incident.OptionalFields2, "optionalFields2");
 
-        return new SyncItem 
-        { 
+        return new SyncItem
+        {
             Id = incident.Id,
             Fields = fields
         };
