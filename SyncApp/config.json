@@ -36,9 +36,9 @@
           "transform": "none"
         },
         {
-          "source": "request",
+          "source": "report",
           "target": "System.Description",
-          "transform": "html_to_markdown"
+          "transform": "none"
         }
       ]
     }

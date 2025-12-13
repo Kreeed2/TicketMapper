@@ -53,7 +53,15 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             if (response.IsSuccessStatusCode
                 && response.Data is not null)
             {
-                return response.Data.Select(MapIncidentToSyncItem);
+                var syncItems = new List<SyncItem>();
+                foreach (var incident in response.Data)
+                {
+                    var syncItem = MapIncidentToSyncItem(incident);
+                    var requests = await GetRequestsAsync(incident.Id);
+                    syncItem.Fields["report"] = FormatRequests(requests);
+                    syncItems.Add(syncItem);
+                }
+                return syncItems;
             }
             return [];
         }
@@ -167,5 +175,38 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         Utilities.AddIfNotNull(dict, $"{prefix}.text3", fields.Text3);
         Utilities.AddIfNotNull(dict, $"{prefix}.text4", fields.Text4);
         Utilities.AddIfNotNull(dict, $"{prefix}.text5", fields.Text5);
+    }
+    private async Task<IEnumerable<TopDeskRequest>> GetRequestsAsync(string incidentId)
+    {
+        try
+        {
+            var request = CreateBaseRequest($"/tas/api/incidents/id/{incidentId}/requests");
+            if (request is null) return [];
+
+            var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskRequest>>(request);
+            if (response.IsSuccessStatusCode && response.Data is not null)
+            {
+                return response.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching requests for incident {incidentId}", incidentId);
+        }
+        return [];
+    }
+
+    private static string FormatRequests(IEnumerable<TopDeskRequest> requests)
+    {
+        if (requests is null || !requests.Any()) return string.Empty;
+
+        var sb = new System.Text.StringBuilder();
+        foreach (var req in requests.OrderBy(r => r.EntryDate))
+        {
+            sb.AppendLine($"<b>{req.EntryDate:yyyy-MM-dd HH:mm} - {req.Operator?.Name ?? "Unknown"}</b><br>");
+            sb.AppendLine(req.MemoText?.Replace("\n", "<br>") ?? "");
+            sb.AppendLine("<br><hr><br>");
+        }
+        return sb.ToString();
     }
 }
