@@ -21,6 +21,6 @@ namespace SyncApp.Interfaces
 
     public interface ITransformer
     {
-        string Transform(string? value, string transformType);
+        string? Transform(string? value, string transformType);
     }
 }

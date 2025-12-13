@@ -5,21 +5,18 @@ namespace SyncApp.Services
 {
     public class Transformer : ITransformer
     {
-        public string Transform(string? value, string transformType)
+        public string? Transform(string? value, string transformType)
         {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
+            if (string.IsNullOrEmpty(value)) return null;
 
-            switch (transformType?.ToLower())
+            return (transformType?.ToLower()) switch
             {
-                case "html_to_markdown":
-                    return ConvertHtmlToMarkdown(value);
-                case "none":
-                default:
-                    return value;
-            }
+                "html_to_markdown" => ConvertHtmlToMarkdown(value),
+                _ => value,
+            };
         }
 
-        private string ConvertHtmlToMarkdown(string html)
+        private static string ConvertHtmlToMarkdown(string html)
         {
             // Very basic implementation for demonstration
             var markdown = html;

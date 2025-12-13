@@ -130,9 +130,13 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
         {
             if (source.Fields.TryGetValue(field.Source, out var value))
             {
-                string stringValue = value?.ToString();
-                string transformed = transformer.Transform(stringValue, field.Transform);
-                target.Fields[field.Target] = transformed;
+                string? stringValue = value?.ToString();
+                string? transformed = transformer.Transform(stringValue, field.Transform);
+
+                if (transformed is not null)
+                {
+                    target.Fields[field.Target] = transformed;
+                }
             }
         }
         return target;
