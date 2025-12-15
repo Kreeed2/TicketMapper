@@ -27,8 +27,8 @@
       "source_system": "topdesk_prod",
       "target_system": "ado_dev",
       "source_object": "incident",
-      "target_object": "Bug",
-      "external_id_field": "Custom.TopDeskId",
+      "target_object": "User Story",
+      "external_id_field": "EHA.TFS.TopDesk_unid",
       "fields": [
         {
           "source": "briefDescription",
@@ -38,7 +38,29 @@
         {
           "source": "report",
           "target": "System.Description",
+          "transform": "none",
+          "update": "false"
+        },
+        {
+          "source": "report",
+          "target": "System.Description",
+          "transform": "none",
+          "update": "false"
+        },
+        {
+          "source": "number",
+          "target": "EHA.TFS.IncidentNumber",
           "transform": "none"
+        },
+        {
+          "source": "Ja - Code Review benötigt",
+          "target": "EHA.TFS.CodeReviewNeeded",
+          "transform": "static"
+        },
+        {
+          "source": "Ja - Technische Dokumentation benötigt",
+          "target": "EHA.TFS.TechnicalDocumentationNeeded",
+          "transform": "static"
         }
       ]
     }
