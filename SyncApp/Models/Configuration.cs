@@ -9,10 +9,33 @@ namespace SyncApp.Models
         public SettingsConfig Settings { get; set; } = new SettingsConfig();
 
         [JsonProperty("systems")]
-        public Dictionary<string, SystemConfig> Systems { get; set; } = new Dictionary<string, SystemConfig>();
+        public Dictionary<string, SystemConfig> Systems { get; set; } = [];
 
         [JsonProperty("mappings")]
-        public List<MappingConfig> Mappings { get; set; } = new List<MappingConfig>();
+        public List<MappingConfig> Mappings { get; set; } = [];
+        [JsonProperty("user_mapping")]
+        public UserMappingConfig UserMapping { get; set; } = new UserMappingConfig();
+    }
+
+    public record UserMappingConfig
+    {
+        [JsonProperty("default_strategy")]
+        public string DefaultStrategy { get; set; } = "exact";
+
+        [JsonProperty("pattern")]
+        public string Pattern { get; set; } = string.Empty;
+
+        [JsonProperty("manual_mappings")]
+        public List<UserMappingItem> ManualMappings { get; set; } = [];
+    }
+
+    public record UserMappingItem
+    {
+        [JsonProperty("source")]
+        public string Source { get; set; } = string.Empty;
+
+        [JsonProperty("target")]
+        public string Target { get; set; } = string.Empty;
     }
 
     public record SettingsConfig
@@ -45,7 +68,7 @@ namespace SyncApp.Models
         public string? Token { get; set; }
 
         [JsonProperty("defaults")]
-        public Dictionary<string, string> Defaults { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> Defaults { get; set; } = [];
     }
 
     public record MappingConfig
@@ -69,7 +92,7 @@ namespace SyncApp.Models
         public string ExternalIdField { get; set; } = string.Empty;
 
         [JsonProperty("fields")]
-        public List<FieldMapping> Fields { get; set; } = new List<FieldMapping>();
+        public List<FieldMapping> Fields { get; set; } = [];
     }
 
     public record FieldMapping

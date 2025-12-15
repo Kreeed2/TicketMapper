@@ -21,6 +21,16 @@
       }
     }
   },
+  "user_mapping": {
+    "default_strategy": "pattern",
+    "pattern": "{0}@example.com",
+    "manual_mappings": [
+      {
+        "source": "j.doe",
+        "target": "john.doe@example.com"
+      }
+    ]
+  },
   "mappings": [
     {
       "name": "Incident to Bug - Project A",

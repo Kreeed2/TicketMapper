@@ -3,7 +3,7 @@ using SyncApp.Interfaces;
 
 namespace SyncApp.Services
 {
-    public class Transformer : ITransformer
+    public class Transformer(IUserMappingService userMappingService) : ITransformer
     {
         public string? Transform(string? value, string transformType)
         {
@@ -12,6 +12,7 @@ namespace SyncApp.Services
             return (transformType?.ToLower()) switch
             {
                 "html_to_markdown" => ConvertHtmlToMarkdown(value),
+                "user_map" => userMappingService.MapUser(value),
                 _ => value,
             };
         }
