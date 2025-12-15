@@ -1,8 +1,10 @@
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
+using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using Microsoft.VisualStudio.Services.WebApi.Patch;
 using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
 using SyncApp.Interfaces;
 using SyncApp.Models;
+using System.Linq;
 using static Microsoft.VisualStudio.Services.Graph.Constants;
 
 namespace SyncApp.Services;
@@ -54,8 +56,35 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
     public async Task<SyncItem?> GetItemByExternalIdAsync(string objectType, string externalIdField, string externalIdValue)
     {
         pLogger.LogInformation("Searching ADO {objectType} for {externalIdField} = {externalIdValue}", objectType, externalIdField, externalIdValue);
-        // WIQL Query: Select [System.Id] From WorkItems Where [WorkItemType] = '{objectType}' AND [{externalIdField}] = '{externalIdValue}'
-        return await Task.FromResult<SyncItem?>(null);
+
+        if (!pConfig.Defaults.TryGetValue("project", out var project))
+        {
+            pLogger.LogError("Azure DevOps SystemConfig is missing the required 'project' setting.");
+            return null;
+        }
+
+        var query = new Wiql() { Query = $"SELECT [ID] FROM WorkItem WHERE [System.WorkItemType] = '{objectType}' AND [{externalIdField}] = '{externalIdValue}'" };
+
+        try
+        {
+            var workItemQueryResponse = await pWitClient.QueryByWiqlAsync(
+                wiql: query,
+                project: project
+            );
+
+            var ids = workItemQueryResponse?.WorkItems.Select(workItemReference => workItemReference.Id);
+
+            if (ids is null || !ids.Any())
+                return null;
+
+            var workItems = await pWitClient.GetWorkItemsAsync(ids);
+            return workItems.Select(wit => new SyncItem() { Id = wit.Id.ToString() ?? throw new InvalidOperationException("WorkItem has null id."), Fields = wit.Fields.ToDictionary() }).FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            pLogger.LogError(ex, "Error fetching ADO {objectType} in project '{project}' with '{id}'.", objectType, project, externalIdValue);
+            throw;
+        }
     }
 
     public async Task<string> CreateItemAsync(string pObjectType, SyncItem pItem, string pExternalIdField, string pExternalIdValue)

@@ -221,8 +221,21 @@ public record Subcategory(
 
 public record TopDeskRequest(
     [property: JsonPropertyName("id")] string Id,
+    [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     [property: JsonPropertyName("entryDate")] DateTime? EntryDate,
     [property: JsonPropertyName("memoText")] string MemoText,
     [property: JsonPropertyName("operator")] Operator Operator,
     [property: JsonPropertyName("sender")] object Sender
+);
+
+public record Language(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("name")] string Name
+);
+
+public record Location(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("branch")] Branch Branch,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("room")] string Room
 );

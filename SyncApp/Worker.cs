@@ -128,15 +128,22 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
 
         foreach (var field in mapping.Fields)
         {
+            string? transformed = null;
+
+            if (field.Transform == "static")
+            {
+                transformed = field.Source;
+            }
+
             if (source.Fields.TryGetValue(field.Source, out var value))
             {
                 string? stringValue = value?.ToString();
-                string? transformed = transformer.Transform(stringValue, field.Transform);
+                transformed = transformer.Transform(stringValue, field.Transform);
+            }
 
-                if (transformed is not null)
-                {
-                    target.Fields[field.Target] = transformed;
-                }
+            if (transformed is not null)
+            {
+                target.Fields[field.Target] = transformed;
             }
         }
         return target;
@@ -145,7 +152,7 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
     private bool HasChanges(SyncItem source, SyncItem target, MappingConfig mapping)
     {
         // Simple comparison of mapped fields
-        foreach (var field in mapping.Fields)
+        foreach (var field in mapping.Fields.Where(f => f.Update))
         {
             if (source.Fields.TryGetValue(field.Source, out var sourceValObj))
             {
@@ -154,7 +161,10 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
                 if (target.Fields.TryGetValue(field.Target, out var targetValObj))
                 {
                     var targetVal = targetValObj?.ToString();
-                    if (sourceVal != targetVal) return true;
+                    if (!sourceVal?.Equals(targetVal, StringComparison.OrdinalIgnoreCase) ?? true)
+                    {
+                        return true;
+                    }
                 }
                 else if (!string.IsNullOrEmpty(sourceVal))
                 {

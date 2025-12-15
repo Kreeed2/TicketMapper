@@ -1,3 +1,4 @@
+using Microsoft.TeamFoundation.Build.WebApi;
 using RestSharp;
 using RestSharp.Authenticators;
 using SyncApp.Interfaces;
@@ -58,6 +59,8 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                 {
                     var syncItem = MapIncidentToSyncItem(incident);
                     var requests = await GetRequestsAsync(incident.Id);
+                    var operators = await GetOperatorAsync(incident.Operator.Id);
+
                     syncItem.Fields["report"] = FormatRequests(requests);
                     syncItems.Add(syncItem);
                 }
@@ -128,7 +131,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         Utilities.AddIfNotNull(fields, "monitored", incident.Monitored);
         Utilities.AddIfNotNull(fields, "expectedTimeSpent", incident.ExpectedTimeSpent);
 
-        // Verkn�pfte Objekte (nur ID + Name)
+        // Verknuepfte Objekte (nur ID + Name)
         Utilities.AddIfNotNull(fields, "category.id", incident.Category?.Id);
         Utilities.AddIfNotNull(fields, "category.name", incident.Category?.Name);
         Utilities.AddIfNotNull(fields, "subcategory.id", incident.Subcategory?.Id);
@@ -176,6 +179,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         Utilities.AddIfNotNull(dict, $"{prefix}.text4", fields.Text4);
         Utilities.AddIfNotNull(dict, $"{prefix}.text5", fields.Text5);
     }
+
     private async Task<IEnumerable<TopDeskRequest>> GetRequestsAsync(string incidentId)
     {
         try
@@ -192,6 +196,26 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         catch (Exception ex)
         {
             logger.LogError(ex, "Error fetching requests for incident {incidentId}", incidentId);
+        }
+        return [];
+    }
+
+    private async Task<IEnumerable<OperatorFull>> GetOperatorAsync(string pOperatorId)
+    {
+        try
+        {
+            var request = CreateBaseRequest($"/tas/api/incidents/id/operators/{pOperatorId}");
+            if (request is null) return [];
+
+            var response = await httpClient.ExecuteAsync<IEnumerable<OperatorFull>>(request);
+            if (response.IsSuccessStatusCode && response.Data is not null)
+            {
+                return response.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching operator {incidentId}", pOperatorId);
         }
         return [];
     }

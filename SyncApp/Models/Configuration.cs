@@ -82,5 +82,8 @@ namespace SyncApp.Models
 
         [JsonProperty("transform")]
         public string Transform { get; set; } = "none";
+
+        [JsonProperty("update")]
+        public bool Update { get; set; } = true;
     }
 }
