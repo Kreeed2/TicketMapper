@@ -1,18 +1,18 @@
-using System.Text.RegularExpressions;
 using SyncApp.Interfaces;
+using SyncApp.Models;
+using System.Text.RegularExpressions;
 
 namespace SyncApp.Services
 {
-    public class Transformer(IUserMappingService userMappingService) : ITransformer
+    public class TextTransformer() : ITransformer
     {
-        public string? Transform(string? value, string transformType)
+        public string? Transform(string? value, FieldMappingTransform transformType)
         {
             if (string.IsNullOrEmpty(value)) return null;
 
-            return (transformType?.ToLower()) switch
+            return (transformType) switch
             {
-                "html_to_markdown" => ConvertHtmlToMarkdown(value),
-                "user_map" => userMappingService.MapUser(value),
+                FieldMappingTransform.HtmlToMarkdown => ConvertHtmlToMarkdown(value),
                 _ => value,
             };
         }

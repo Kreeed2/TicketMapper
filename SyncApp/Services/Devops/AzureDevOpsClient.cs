@@ -7,7 +7,7 @@ using SyncApp.Models;
 using System.Linq;
 using static Microsoft.VisualStudio.Services.Graph.Constants;
 
-namespace SyncApp.Services;
+namespace SyncApp.Services.Devops;
 
 public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient pWitClient, ILogger<AzureDevOpsClient> pLogger) : ISystemClient
 {

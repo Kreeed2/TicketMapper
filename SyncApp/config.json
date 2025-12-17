@@ -21,16 +21,6 @@
       }
     }
   },
-  "user_mapping": {
-    "default_strategy": "pattern",
-    "pattern": "{0}@example.com",
-    "manual_mappings": [
-      {
-        "source": "j.doe",
-        "target": "john.doe@example.com"
-      }
-    ]
-  },
   "mappings": [
     {
       "name": "Incident to Bug - Project A",
@@ -40,6 +30,11 @@
       "target_object": "User Story",
       "external_id_field": "EHA.TFS.TopDesk_unid",
       "fields": [
+        {
+          "source": "operator.id",
+          "target": "System.AssignedTo",
+          "transform": "lookup"
+        },
         {
           "source": "briefDescription",
           "target": "System.Title",

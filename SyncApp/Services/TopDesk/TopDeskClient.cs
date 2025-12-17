@@ -1,10 +1,12 @@
 using Microsoft.TeamFoundation.Build.WebApi;
 using RestSharp;
 using RestSharp.Authenticators;
+using SyncApp.Helper;
 using SyncApp.Interfaces;
 using SyncApp.Models;
+using System.Reflection.Metadata;
 
-namespace SyncApp.Services;
+namespace SyncApp.Services.TopDesk;
 
 public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<TopDeskClient> logger) : ISystemClient
 {
@@ -60,8 +62,10 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                     var syncItem = MapIncidentToSyncItem(incident);
                     var requests = await GetRequestsAsync(incident.Id);
                     var operators = await GetOperatorAsync(incident.Operator.Id);
+                    var progressTrail = await GetProgressTrail(incident.Id);
 
                     syncItem.Fields["report"] = FormatRequests(requests);
+                    
                     syncItems.Add(syncItem);
                 }
                 return syncItems;
@@ -200,14 +204,14 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         return [];
     }
 
-    private async Task<IEnumerable<OperatorFull>> GetOperatorAsync(string pOperatorId)
+    private async Task<OperatorFull?> GetOperatorAsync(string pOperatorId)
     {
         try
         {
-            var request = CreateBaseRequest($"/tas/api/incidents/id/operators/{pOperatorId}");
-            if (request is null) return [];
+            var request = CreateBaseRequest($"/tas/api/operators/id/{pOperatorId}");
+            if (request is null) return null;
 
-            var response = await httpClient.ExecuteAsync<IEnumerable<OperatorFull>>(request);
+            var response = await httpClient.ExecuteAsync<OperatorFull>(request);
             if (response.IsSuccessStatusCode && response.Data is not null)
             {
                 return response.Data;
@@ -216,6 +220,26 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         catch (Exception ex)
         {
             logger.LogError(ex, "Error fetching operator {incidentId}", pOperatorId);
+        }
+        return null;
+    }
+
+    private async Task<IEnumerable<TopDeskProgressTrailItem>> GetProgressTrail(string pIncidentId) 
+    {
+        try
+        {
+            var request = CreateBaseRequest($"tas/api/incidents/id/{pIncidentId}/progresstrail");
+            if (request is null) return [];
+
+            var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskProgressTrailItem>>(request);
+            if (response.IsSuccessStatusCode && response.Data is not null)
+            {
+                return response.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching progress trail for {incidentId}", pIncidentId);
         }
         return [];
     }

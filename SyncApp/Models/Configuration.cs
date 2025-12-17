@@ -13,20 +13,6 @@ namespace SyncApp.Models
 
         [JsonProperty("mappings")]
         public List<MappingConfig> Mappings { get; set; } = [];
-        [JsonProperty("user_mapping")]
-        public UserMappingConfig UserMapping { get; set; } = new UserMappingConfig();
-    }
-
-    public record UserMappingConfig
-    {
-        [JsonProperty("default_strategy")]
-        public string DefaultStrategy { get; set; } = "exact";
-
-        [JsonProperty("pattern")]
-        public string Pattern { get; set; } = string.Empty;
-
-        [JsonProperty("manual_mappings")]
-        public List<UserMappingItem> ManualMappings { get; set; } = [];
     }
 
     public record UserMappingItem
@@ -104,9 +90,21 @@ namespace SyncApp.Models
         public string Target { get; set; } = string.Empty;
 
         [JsonProperty("transform")]
-        public string Transform { get; set; } = "none";
+        public FieldMappingTransform Transform { get; set; } = FieldMappingTransform.None;
 
         [JsonProperty("update")]
         public bool Update { get; set; } = true;
+
+        [JsonProperty("pattern")]
+        public string? Pattern { get; set; } = null;
+    }
+
+    public enum FieldMappingTransform
+    {
+        [JsonProperty("none")] None,
+        [JsonProperty("lookup")] Lookup,
+        [JsonProperty("static")] Static,
+        [JsonProperty("html_to_markdown")] HtmlToMarkdown,
+        [JsonProperty("pattern")] Pattern,
     }
 }

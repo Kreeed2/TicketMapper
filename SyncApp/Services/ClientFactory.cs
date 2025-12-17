@@ -4,6 +4,8 @@ using Microsoft.VisualStudio.Services.WebApi;
 using RestSharp;
 using SyncApp.Interfaces;
 using SyncApp.Models;
+using SyncApp.Services.Devops;
+using SyncApp.Services.TopDesk;
 
 namespace SyncApp.Services;
 

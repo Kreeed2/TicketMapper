@@ -4,16 +4,16 @@ using SyncApp.Services;
 
 namespace SyncApp;
 
-public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransformer transformer, AppConfiguration config, bool dryRun) : BackgroundService
+public class Worker(ILogger<Worker> pLogger, ClientFactory pClientFactory, TransformerFactory pTransformerFactory, AppConfiguration pConfig, bool pDryRun) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("SyncApp started. DryRun: {DryRun}", dryRun);
+        pLogger.LogInformation("SyncApp started. DryRun: {DryRun}", pDryRun);
 
         // 1. Validation Phase
         if (!await ValidateConfigurationAsync())
         {
-            logger.LogCritical("Configuration validation failed. Stopping.");
+            pLogger.LogCritical("Configuration validation failed. Stopping.");
             return;
         }
 
@@ -21,39 +21,39 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
         {
             try
             {
-                logger.LogInformation("Starting sync cycle at: {time}", DateTimeOffset.Now);
+                pLogger.LogInformation("Starting sync cycle at: {time}", DateTimeOffset.Now);
 
-                foreach (var mapping in config.Mappings)
+                foreach (var mapping in pConfig.Mappings)
                 {
                     await ProcessMappingAsync(mapping, stoppingToken);
                 }
 
-                logger.LogInformation("Sync cycle completed. Sleeping for {seconds} seconds.", config.Settings.PollIntervalSeconds);
+                pLogger.LogInformation("Sync cycle completed. Sleeping for {seconds} seconds.", pConfig.Settings.PollIntervalSeconds);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An error occurred during the sync cycle.");
+                pLogger.LogError(ex, "An error occurred during the sync cycle.");
             }
 
-            await Task.Delay(config.Settings.PollIntervalSeconds * 1000, stoppingToken);
+            await Task.Delay(pConfig.Settings.PollIntervalSeconds * 1000, stoppingToken);
         }
     }
 
     private async Task<bool> ValidateConfigurationAsync()
     {
-        foreach (var mapping in config.Mappings)
+        foreach (var mapping in pConfig.Mappings)
         {
-            if (!config.Systems.TryGetValue(mapping.TargetSystem, out var targetSysConfig))
+            if (!pConfig.Systems.TryGetValue(mapping.TargetSystem, out var targetSysConfig))
             {
-                logger.LogError("Target system '{targetSysConfig}' in mapping '{name}' is not defined in systems.", targetSysConfig, mapping.Name);
+                pLogger.LogError("Target system '{targetSysConfig}' in mapping '{name}' is not defined in systems.", targetSysConfig, mapping.Name);
                 return false;
             }
 
             // Check external_id_field on target
-            var targetClient = clientFactory.CreateClient(targetSysConfig);
+            var targetClient = pClientFactory.CreateClient(targetSysConfig);
             if (!await targetClient.ValidateFieldExistsAsync(mapping.TargetObject, mapping.ExternalIdField))
             {
-                logger.LogError("External ID field '{externalIdField}' does not exist on target system '{targetSystem}' object '{targetObject}'.", mapping.ExternalIdField, mapping.TargetSystem, mapping.TargetObject);
+                pLogger.LogError("External ID field '{externalIdField}' does not exist on target system '{targetSystem}' object '{targetObject}'.", mapping.ExternalIdField, mapping.TargetSystem, mapping.TargetObject);
                 return false;
             }
         }
@@ -62,17 +62,17 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
 
     private async Task ProcessMappingAsync(MappingConfig mapping, CancellationToken stoppingToken)
     {
-        logger.LogInformation("Processing mapping: {name}", mapping.Name);
+        pLogger.LogInformation("Processing mapping: {name}", mapping.Name);
 
-        if (!config.Systems.TryGetValue(mapping.SourceSystem, out var sourceSysConfig) ||
-            !config.Systems.TryGetValue(mapping.TargetSystem, out var targetSysConfig))
+        if (!pConfig.Systems.TryGetValue(mapping.SourceSystem, out var sourceSysConfig) ||
+            !pConfig.Systems.TryGetValue(mapping.TargetSystem, out var targetSysConfig))
         {
-            logger.LogError("Invalid system keys in mapping {name}", mapping.Name);
+            pLogger.LogError("Invalid system keys in mapping {name}", mapping.Name);
             return;
         }
 
-        var sourceClient = clientFactory.CreateClient(sourceSysConfig);
-        var targetClient = clientFactory.CreateClient(targetSysConfig);
+        var sourceClient = pClientFactory.CreateClient(sourceSysConfig);
+        var targetClient = pClientFactory.CreateClient(targetSysConfig);
 
         // Fetch changes from Source
         var sourceItems = await sourceClient.GetChangesAsync(mapping.SourceObject);
@@ -92,8 +92,8 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
                 if (targetItem == null)
                 {
                     // Create
-                    logger.LogInformation("Item {id} not found in target. Creating...", sourceItem.Id);
-                    if (!dryRun)
+                    pLogger.LogInformation("Item {id} not found in target. Creating...", sourceItem.Id);
+                    if (!pDryRun)
                     {
                         await targetClient.CreateItemAsync(mapping.TargetObject, targetItemFields, mapping.ExternalIdField, sourceItem.Id);
                     }
@@ -103,21 +103,21 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
                     // Update
                     if (HasChanges(sourceItem, targetItem, mapping))
                     {
-                        logger.LogInformation("Item {id} found in target. Updating...", sourceItem.Id);
-                        if (!dryRun)
+                        pLogger.LogInformation("Item {id} found in target. Updating...", sourceItem.Id);
+                        if (!pDryRun)
                         {
                             await targetClient.UpdateItemAsync(mapping.TargetObject, targetItem.Id, targetItemFields);
                         }
                     }
                     else
                     {
-                        logger.LogDebug("Item {id} is up to date.", sourceItem.Id);
+                        pLogger.LogDebug("Item {id} is up to date.", sourceItem.Id);
                     }
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error processing item {id} in mapping {name}", sourceItem.Id, mapping.Name);
+                pLogger.LogError(ex, "Error processing item {id} in mapping {name}", sourceItem.Id, mapping.Name);
             }
         }
     }
@@ -128,9 +128,11 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
 
         foreach (var field in mapping.Fields)
         {
+            var transformer = pTransformerFactory.CreateTransformer(field);
+
             string? transformed = null;
 
-            if (field.Transform == "static")
+            if (field.Transform == FieldMappingTransform.Static)
             {
                 transformed = field.Source;
             }
@@ -154,6 +156,8 @@ public class Worker(ILogger<Worker> logger, ClientFactory clientFactory, ITransf
         // Simple comparison of mapped fields
         foreach (var field in mapping.Fields.Where(f => f.Update))
         {
+            var transformer = pTransformerFactory.CreateTransformer(field);
+
             if (source.Fields.TryGetValue(field.Source, out var sourceValObj))
             {
                 var sourceVal = transformer.Transform(sourceValObj?.ToString(), field.Transform);
