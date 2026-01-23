@@ -4,7 +4,6 @@ namespace SyncApp.Interfaces;
 
 public interface ISystemClient
 {
-    string SystemName { get; }
     Task<bool> ValidateFieldExistsAsync(string objectType, string fieldName);
     Task<IEnumerable<SyncItem>> GetChangesAsync(string objectType);
     Task<SyncItem?> GetItemByExternalIdAsync(string objectType, string externalIdField, string externalIdValue);

@@ -1,26 +1,34 @@
 ﻿using SyncApp.Interfaces;
 using SyncApp.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace SyncApp.Services
+namespace SyncApp.Services;
+
+public class TransformerFactory(IServiceProvider pServiceProvider, ILoggerFactory pLoggerFactory)
 {
-    public class TransformerFactory(IServiceProvider pServiceProvider, ILoggerFactory pLoggerFactory)
+    SystemMappingType mSourceSystem;
+    SystemMappingType mTargetSystem;
+
+    public void Configure(SystemMappingType pSourceSystem, SystemMappingType pTargetSystem) 
     {
-        public ITransformer CreateTransformer(FieldMapping pFieldMapping)
+        mSourceSystem = pSourceSystem;
+        mTargetSystem = pTargetSystem;
+    }
+
+    public ITransformer CreateTransformer(FieldMapping pFieldMapping)
+    {
+        switch (pFieldMapping.Transform)
         {
-            return pFieldMapping.Transform switch
-            {
-                FieldMappingTransform.None
-                or FieldMappingTransform.Static
-                or FieldMappingTransform.HtmlToMarkdown => pServiceProvider.GetRequiredService<TextTransformer>(),
-                FieldMappingTransform.Pattern
-                or FieldMappingTransform.Lookup => pServiceProvider.GetRequiredService<UserTransformer>(),
-                _ => throw new NotImplementedException()
-            };
+            case FieldMappingTransform.None:
+            case FieldMappingTransform.Static:
+            case FieldMappingTransform.HtmlToMarkdown:
+                return pServiceProvider.GetRequiredService<TextTransformer>();
+
+            case FieldMappingTransform.Lookup:
+            case FieldMappingTransform.Pattern:
+                var service = pServiceProvider.GetRequiredService<UserTransformer>();
+                return service.Configure(mSourceSystem, mTargetSystem, pFieldMapping);
+            default:
+                throw new NotImplementedException();
         }
     }
 }

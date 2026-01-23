@@ -20,10 +20,10 @@ public class ClientFactory(IServiceProvider serviceProvider, ILoggerFactory logg
             return new MockClient(pConfig, loggerFactory.CreateLogger<MockClient>());
         }
 
-        return pConfig.Type.ToLower() switch
+        return pConfig.Type switch
         {
-            "topdesk" => new TopDeskClient(pConfig, serviceProvider.GetRequiredService<IRestClient>(), loggerFactory.CreateLogger<TopDeskClient>()),
-            "azure_devops" => CreateAzureDevOpsClient(pConfig),
+            SystemMappingType.TopDesk => new TopDeskClient(pConfig, serviceProvider.GetRequiredService<IRestClient>(), loggerFactory.CreateLogger<TopDeskClient>()),
+            SystemMappingType.AzureDevOps => CreateAzureDevOpsClient(pConfig),
             _ => new MockClient(pConfig, loggerFactory.CreateLogger<MockClient>()),// Fallback or throw
         };
     }

@@ -10,8 +10,6 @@ namespace SyncApp.Services.TopDesk;
 
 public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<TopDeskClient> logger) : ISystemClient
 {
-    public string SystemName => "topdesk";
-
     private RestRequest? CreateBaseRequest(string pUrlPath)
     {
         if (Uri.TryCreate(config.Url, UriKind.Absolute, out var baseUrl)

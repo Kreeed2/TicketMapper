@@ -1,10 +1,14 @@
-using SyncApp.Interfaces;
 using SyncApp.Models;
 using SyncApp.Services;
 
 namespace SyncApp;
 
-public class Worker(ILogger<Worker> pLogger, ClientFactory pClientFactory, TransformerFactory pTransformerFactory, AppConfiguration pConfig, bool pDryRun) : BackgroundService
+public class Worker(
+    ILogger<Worker> pLogger, 
+    ClientFactory pClientFactory, 
+    TransformerFactory pTransformerFactory, 
+    AppConfiguration pConfig, 
+    bool pDryRun) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -64,15 +68,14 @@ public class Worker(ILogger<Worker> pLogger, ClientFactory pClientFactory, Trans
     {
         pLogger.LogInformation("Processing mapping: {name}", mapping.Name);
 
-        if (!pConfig.Systems.TryGetValue(mapping.SourceSystem, out var sourceSysConfig) ||
-            !pConfig.Systems.TryGetValue(mapping.TargetSystem, out var targetSysConfig))
+        bool flowControl = TryGetSystemConfigs(mapping, out SystemConfig? sourceSysConfig, out SystemConfig? targetSysConfig);
+        if (!flowControl)
         {
-            pLogger.LogError("Invalid system keys in mapping {name}", mapping.Name);
             return;
         }
 
-        var sourceClient = pClientFactory.CreateClient(sourceSysConfig);
-        var targetClient = pClientFactory.CreateClient(targetSysConfig);
+        var sourceClient = pClientFactory.CreateClient(sourceSysConfig!);
+        var targetClient = pClientFactory.CreateClient(targetSysConfig!);
 
         // Fetch changes from Source
         var sourceItems = await sourceClient.GetChangesAsync(mapping.SourceObject);
@@ -87,7 +90,7 @@ public class Worker(ILogger<Worker> pLogger, ClientFactory pClientFactory, Trans
                 // We need to match based on the ExternalIdField in Target which should hold the SourceItem.Id
                 var targetItem = await targetClient.GetItemByExternalIdAsync(mapping.TargetObject, mapping.ExternalIdField, sourceItem.Id);
 
-                var targetItemFields = MapFields(sourceItem, mapping);
+                var targetItemFields = await MapFieldsAsync(sourceItem, mapping);
 
                 if (targetItem == null)
                 {
@@ -101,7 +104,7 @@ public class Worker(ILogger<Worker> pLogger, ClientFactory pClientFactory, Trans
                 else
                 {
                     // Update
-                    if (HasChanges(sourceItem, targetItem, mapping))
+                    if (await HasChanges(sourceItem, targetItem, mapping))
                     {
                         pLogger.LogInformation("Item {id} found in target. Updating...", sourceItem.Id);
                         if (!pDryRun)
@@ -122,11 +125,34 @@ public class Worker(ILogger<Worker> pLogger, ClientFactory pClientFactory, Trans
         }
     }
 
-    private SyncItem MapFields(SyncItem source, MappingConfig mapping)
+    private bool TryGetSystemConfigs(MappingConfig mapping, out SystemConfig? sourceSysConfig, out SystemConfig? targetSysConfig)
+    {
+        sourceSysConfig = null;
+        targetSysConfig = null;
+
+        if (!pConfig.Systems.TryGetValue(mapping.SourceSystem, out sourceSysConfig) ||
+            !pConfig.Systems.TryGetValue(mapping.TargetSystem, out targetSysConfig))
+        {
+            pLogger.LogError("Invalid system keys in mapping {name}", mapping.Name);
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task<SyncItem> MapFieldsAsync(SyncItem pSource, MappingConfig pMapping)
     {
         var target = new SyncItem() { Id = Guid.Empty.ToString() };
 
-        foreach (var field in mapping.Fields)
+        bool flowControl = TryGetSystemConfigs(pMapping, out SystemConfig? sourceSysConfig, out SystemConfig? targetSysConfig);
+        if (!flowControl)
+        {
+            return target;
+        }
+
+        pTransformerFactory.Configure(sourceSysConfig!.Type, targetSysConfig!.Type);
+
+        foreach (var field in pMapping.Fields)
         {
             var transformer = pTransformerFactory.CreateTransformer(field);
 
@@ -137,10 +163,10 @@ public class Worker(ILogger<Worker> pLogger, ClientFactory pClientFactory, Trans
                 transformed = field.Source;
             }
 
-            if (source.Fields.TryGetValue(field.Source, out var value))
+            if (pSource.Fields.TryGetValue(field.Source, out var value))
             {
                 string? stringValue = value?.ToString();
-                transformed = transformer.Transform(stringValue, field.Transform);
+                transformed = await transformer.Transform(stringValue, field.Transform);
             }
 
             if (transformed is not null)
@@ -151,8 +177,16 @@ public class Worker(ILogger<Worker> pLogger, ClientFactory pClientFactory, Trans
         return target;
     }
 
-    private bool HasChanges(SyncItem source, SyncItem target, MappingConfig mapping)
+    private async Task<bool> HasChanges(SyncItem source, SyncItem target, MappingConfig mapping)
     {
+        bool flowControl = TryGetSystemConfigs(mapping, out SystemConfig? sourceSysConfig, out SystemConfig? targetSysConfig);
+        if (!flowControl)
+        {
+            throw new Exception("Could not configure System Mapping in HasChanges Method");
+        }
+
+        pTransformerFactory.Configure(sourceSysConfig!.Type, targetSysConfig!.Type);
+
         // Simple comparison of mapped fields
         foreach (var field in mapping.Fields.Where(f => f.Update))
         {
@@ -160,7 +194,7 @@ public class Worker(ILogger<Worker> pLogger, ClientFactory pClientFactory, Trans
 
             if (source.Fields.TryGetValue(field.Source, out var sourceValObj))
             {
-                var sourceVal = transformer.Transform(sourceValObj?.ToString(), field.Transform);
+                var sourceVal = await transformer.Transform(sourceValObj?.ToString(), field.Transform);
 
                 if (target.Fields.TryGetValue(field.Target, out var targetValObj))
                 {

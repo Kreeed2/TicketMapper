@@ -6,15 +6,19 @@ namespace SyncApp.Services
 {
     public class TextTransformer() : ITransformer
     {
-        public string? Transform(string? value, FieldMappingTransform transformType)
-        {
-            if (string.IsNullOrEmpty(value)) return null;
+        public ITransformer Configure(SystemMappingType pSourceSystem, SystemMappingType pTargetSystem, FieldMapping pMapping) => this;
 
-            return (transformType) switch
+        public Task<string?> Transform(string? value, FieldMappingTransform transformType)
+        {
+            if (string.IsNullOrEmpty(value)) return Task.FromResult<string?>(null);
+
+            var mappedValue = transformType switch
             {
                 FieldMappingTransform.HtmlToMarkdown => ConvertHtmlToMarkdown(value),
                 _ => value,
             };
+
+            return Task.FromResult<string?>(mappedValue);
         }
 
         private static string ConvertHtmlToMarkdown(string html)

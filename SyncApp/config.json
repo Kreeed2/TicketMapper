@@ -12,7 +12,7 @@
       "password": "password"
     },
     "ado_dev": {
-      "type": "azure_devops",
+      "type": "azuredevops",
       "url": "https://dev.azure.com/mock-org",
       "auth_type": "pat",
       "token": "mock_token",
@@ -31,7 +31,7 @@
       "external_id_field": "EHA.TFS.TopDesk_unid",
       "fields": [
         {
-          "source": "operator.id",
+          "source": "operator.name",
           "target": "System.AssignedTo",
           "transform": "lookup"
         },
@@ -44,13 +44,13 @@
           "source": "report",
           "target": "System.Description",
           "transform": "none",
-          "update": "false"
+          "update": false
         },
         {
           "source": "report",
           "target": "System.Description",
           "transform": "none",
-          "update": "false"
+          "update": false
         },
         {
           "source": "number",

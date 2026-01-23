@@ -4,15 +4,11 @@ using Microsoft.VisualStudio.Services.WebApi.Patch;
 using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
 using SyncApp.Interfaces;
 using SyncApp.Models;
-using System.Linq;
-using static Microsoft.VisualStudio.Services.Graph.Constants;
 
 namespace SyncApp.Services.Devops;
 
 public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient pWitClient, ILogger<AzureDevOpsClient> pLogger) : ISystemClient
 {
-    public string SystemName => "azure_devops";
-
     public async Task<bool> ValidateFieldExistsAsync(string pObjectType, string pFieldName)
     {
         pLogger.LogInformation("Validating field {fieldName} on ADO WorkItem {objectType}.", pFieldName, pObjectType);

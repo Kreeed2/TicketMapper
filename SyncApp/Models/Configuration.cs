@@ -1,110 +1,118 @@
-using System.Collections.Generic;
-using Newtonsoft.Json;
+using SyncApp.Helper;
+using System.Text.Json.Serialization;
 
 namespace SyncApp.Models
 {
     public record AppConfiguration
     {
-        [JsonProperty("settings")]
+        [JsonPropertyName("settings")]
         public SettingsConfig Settings { get; set; } = new SettingsConfig();
 
-        [JsonProperty("systems")]
+        [JsonPropertyName("systems")]
         public Dictionary<string, SystemConfig> Systems { get; set; } = [];
 
-        [JsonProperty("mappings")]
+        [JsonPropertyName("mappings")]
         public List<MappingConfig> Mappings { get; set; } = [];
     }
 
     public record UserMappingItem
     {
-        [JsonProperty("source")]
+        [JsonPropertyName("source")]
         public string Source { get; set; } = string.Empty;
 
-        [JsonProperty("target")]
+        [JsonPropertyName("target")]
         public string Target { get; set; } = string.Empty;
     }
 
     public record SettingsConfig
     {
-        [JsonProperty("run_mode")]
+        [JsonPropertyName("run_mode")]
         public string RunMode { get; set; } = "polling";
 
-        [JsonProperty("poll_interval_seconds")]
+        [JsonPropertyName("poll_interval_seconds")]
         public int PollIntervalSeconds { get; set; } = 30;
     }
 
     public record SystemConfig
     {
-        [JsonProperty("type")]
-        public string Type { get; set; } = string.Empty;
+        [JsonPropertyName("type")]
+        public SystemMappingType Type { get; set; }
 
-        [JsonProperty("url")]
+        [JsonPropertyName("url")]
         public string Url { get; set; } = string.Empty;
 
-        [JsonProperty("auth_type")]
+        [JsonPropertyName("auth_type")]
         public string AuthType { get; set; } = string.Empty;
 
-        [JsonProperty("username")]
+        [JsonPropertyName("username")]
         public string? Username { get; set; }
 
-        [JsonProperty("password")]
+        [JsonPropertyName("password")]
         public string? Password { get; set; }
 
-        [JsonProperty("token")]
+        [JsonPropertyName("token")]
         public string? Token { get; set; }
 
-        [JsonProperty("defaults")]
+        [JsonPropertyName("defaults")]
         public Dictionary<string, string> Defaults { get; set; } = [];
     }
 
     public record MappingConfig
     {
-        [JsonProperty("name")]
+        [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
 
-        [JsonProperty("source_system")]
+        [JsonPropertyName("source_system")]
         public string SourceSystem { get; set; } = string.Empty;
 
-        [JsonProperty("target_system")]
+        [JsonPropertyName("target_system")]
         public string TargetSystem { get; set; } = string.Empty;
 
-        [JsonProperty("source_object")]
+        [JsonPropertyName("source_object")]
         public string SourceObject { get; set; } = string.Empty;
 
-        [JsonProperty("target_object")]
+        [JsonPropertyName("target_object")]
         public string TargetObject { get; set; } = string.Empty;
 
-        [JsonProperty("external_id_field")]
+        [JsonPropertyName("external_id_field")]
         public string ExternalIdField { get; set; } = string.Empty;
 
-        [JsonProperty("fields")]
+        [JsonPropertyName("fields")]
         public List<FieldMapping> Fields { get; set; } = [];
     }
 
     public record FieldMapping
     {
-        [JsonProperty("source")]
+        [JsonPropertyName("source")]
         public string Source { get; set; } = string.Empty;
 
-        [JsonProperty("target")]
+        [JsonPropertyName("target")]
         public string Target { get; set; } = string.Empty;
 
-        [JsonProperty("transform")]
+        [JsonPropertyName("transform")]
         public FieldMappingTransform Transform { get; set; } = FieldMappingTransform.None;
 
-        [JsonProperty("update")]
+        [JsonPropertyName("update")]
         public bool Update { get; set; } = true;
 
-        [JsonProperty("pattern")]
+        [JsonPropertyName("pattern")]
         public string? Pattern { get; set; } = null;
     }
 
+    [JsonConverter(typeof(FieldMappingTransformConverter))]
     public enum FieldMappingTransform
     {
-        [JsonProperty("none")] None,
-        [JsonProperty("lookup")] Lookup,
-        [JsonProperty("static")] Static,
-        [JsonProperty("html_to_markdown")] HtmlToMarkdown,
-        [JsonProperty("pattern")] Pattern,
+        None,
+        Lookup,
+        Static,
+        HtmlToMarkdown,
+        Pattern,
+    }
+
+    [JsonConverter(typeof(SystemMappingTypeConverter))]
+    public enum SystemMappingType
+    {
+        TopDesk,
+        AzureDevOps
     }
 }

@@ -4,5 +4,7 @@ namespace SyncApp.Interfaces;
 
 public interface ITransformer
 {
-    string? Transform(string? value, FieldMappingTransform transformType);
+    ITransformer Configure(SystemMappingType pSourceSystem, SystemMappingType pTargetSystem, FieldMapping pMapping);
+
+    Task<string?> Transform(string? pValue, FieldMappingTransform pTransformType);
 }
