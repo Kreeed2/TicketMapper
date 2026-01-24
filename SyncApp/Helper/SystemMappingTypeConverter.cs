@@ -3,6 +3,8 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+namespace SyncApp.Helper;
+
 public class SystemMappingTypeConverter : JsonConverter<SystemMappingType>
 {
     public override SystemMappingType Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

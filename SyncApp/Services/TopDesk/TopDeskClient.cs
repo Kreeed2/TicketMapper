@@ -63,11 +63,12 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                     var progressTrail = await GetProgressTrail(incident.Id);
 
                     syncItem.Fields["report"] = FormatRequests(requests);
-                    
+
                     syncItems.Add(syncItem);
                 }
                 return syncItems;
             }
+            logger.LogError("Error fetching changes from TopDesk. Status: {Status}, Error: {Error}", response.StatusCode, response.ErrorMessage);
             return [];
         }
         catch (Exception ex)
@@ -222,7 +223,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         return null;
     }
 
-    private async Task<IEnumerable<TopDeskProgressTrailItem>> GetProgressTrail(string pIncidentId) 
+    private async Task<IEnumerable<TopDeskProgressTrailItem>> GetProgressTrail(string pIncidentId)
     {
         try
         {
