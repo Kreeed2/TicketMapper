@@ -1,0 +1,73 @@
+{
+  "settings": {
+    "run_mode": "polling",
+    "poll_interval_seconds": 10
+  },
+  "systems": {
+    "topdesk_prod": {
+      "type": "topdesk",
+      "url": "https://mock.topdesk.net",
+      "auth_type": "basic",
+      "username": "admin",
+      "password": "password"
+    },
+    "ado_dev": {
+      "type": "azuredevops",
+      "url": "https://dev.azure.com/mock-org",
+      "auth_type": "pat",
+      "token": "mock_token",
+      "defaults": {
+        "project": "ProjectA"
+      }
+    }
+  },
+  "mappings": [
+    {
+      "name": "Incident to Bug - Project A",
+      "source_system": "topdesk_prod",
+      "target_system": "ado_dev",
+      "source_object": "incident",
+      "target_object": "User Story",
+      "external_id_field": "EHA.TFS.TopDesk_unid",
+      "fields": [
+        {
+          "source": "operator.name",
+          "target": "System.AssignedTo",
+          "transform": "lookup"
+        },
+        {
+          "source": "briefDescription",
+          "target": "System.Title",
+          "transform": "none"
+        },
+        {
+          "source": "report",
+          "target": "System.Description",
+          "transform": "none",
+          "update": false
+        },
+        {
+          "source": "report",
+          "target": "System.Description",
+          "transform": "none",
+          "update": false
+        },
+        {
+          "source": "number",
+          "target": "EHA.TFS.IncidentNumber",
+          "transform": "none"
+        },
+        {
+          "source": "Ja - Code Review benötigt",
+          "target": "EHA.TFS.CodeReviewNeeded",
+          "transform": "static"
+        },
+        {
+          "source": "Ja - Technische Dokumentation benötigt",
+          "target": "EHA.TFS.TechnicalDocumentationNeeded",
+          "transform": "static"
+        }
+      ]
+    }
+  ]
+}
