@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "settings": {
+      "type": "object",
+      "properties": {
+        "run_mode": {
+          "type": "string"
+        },
+        "poll_interval_seconds": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "run_mode",
+        "poll_interval_seconds"
+      ]
+    },
+    "systems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "auth_type": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "defaults": {
+            "type": "object",
+            "properties": {
+              "project": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "url",
+          "auth_type"
+        ]
+      }
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source_system": {
+            "type": "string"
+          },
+          "target_system": {
+            "type": "string"
+          },
+          "source_object": {
+            "type": "string"
+          },
+          "target_object": {
+            "type": "string"
+          },
+          "external_id_field": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "transform": {
+                  "type": "string",
+                  "enum": [
+                    "lookup",
+                    "none",
+                    "static",
+                    "pattern",
+                    "html_to_markdown"
+                  ]
+                },
+                "update": {
+                  "type": "boolean"
+                },
+                "is_foreign": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "source",
+                "target",
+                "transform"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "source_system",
+          "target_system",
+          "source_object",
+          "target_object",
+          "external_id_field",
+          "fields"
+        ]
+      }
+    }
+  },
+  "required": [
+    "settings",
+    "systems",
+    "mappings"
+  ]
+}

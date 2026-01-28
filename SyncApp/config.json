@@ -3,15 +3,17 @@
     "run_mode": "polling",
     "poll_interval_seconds": 10
   },
-  "systems": {
-    "topdesk_prod": {
+  "systems": [
+    {
+      "name": "topdesk_prod",
       "type": "topdesk",
       "url": "https://mock.topdesk.net",
       "auth_type": "basic",
       "username": "admin",
       "password": "password"
     },
-    "ado_dev": {
+    {
+      "name": "ado_dev",
       "type": "azuredevops",
       "url": "https://dev.azure.com/mock-org",
       "auth_type": "pat",
@@ -20,7 +22,7 @@
         "project": "ProjectA"
       }
     }
-  },
+  ],
   "mappings": [
     {
       "name": "Incident to Bug - Project A",
@@ -66,6 +68,12 @@
           "source": "Ja - Technische Dokumentation benötigt",
           "target": "EHA.TFS.TechnicalDocumentationNeeded",
           "transform": "static"
+        },
+        {
+          "source": "progressTrail",
+          "target": "Comments",
+          "is_foreign": true,
+          "transform": "none"
         }
       ]
     }

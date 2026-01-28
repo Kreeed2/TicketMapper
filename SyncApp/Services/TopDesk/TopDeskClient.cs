@@ -1,9 +1,11 @@
 using Microsoft.TeamFoundation.Build.WebApi;
+using Microsoft.TeamFoundation.WorkItemTracking.Process.WebApi.Models.Process;
 using RestSharp;
 using RestSharp.Authenticators;
 using SyncApp.Helper;
 using SyncApp.Interfaces;
 using SyncApp.Models;
+using SyncApp.Models.TopDesk;
 using System.Reflection.Metadata;
 
 namespace SyncApp.Services.TopDesk;
@@ -63,6 +65,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                     var progressTrail = await GetProgressTrail(incident.Id);
 
                     syncItem.Fields["report"] = FormatRequests(requests);
+                    syncItem.ForeignFields["progressTrail"] = FormatProgressTails(progressTrail);
 
                     syncItems.Add(syncItem);
                 }
@@ -234,7 +237,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             if (response.IsSuccessStatusCode && response.Data is not null)
             {
                 return response.Data;
-            }
+            } 
         }
         catch (Exception ex)
         {
@@ -250,10 +253,31 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         var sb = new System.Text.StringBuilder();
         foreach (var req in requests.OrderBy(r => r.EntryDate))
         {
-            sb.AppendLine($"<b>{req.EntryDate:yyyy-MM-dd HH:mm} - {req.Operator?.Name ?? "Unknown"}</b><br>");
+            sb.AppendLine($"<b>{req.EntryDate:yyyy-MM-dd HH:mm} - {req.Person?.Name ?? "Unknown"}</b><br>");
             sb.AppendLine(req.MemoText?.Replace("\n", "<br>") ?? "");
             sb.AppendLine("<br><hr><br>");
         }
         return sb.ToString();
+    }
+
+    private static IEnumerable<SyncItem> FormatProgressTails(IEnumerable<TopDeskProgressTrailItem> pProgressTrailItems)
+    {
+        if (pProgressTrailItems is null || !pProgressTrailItems.Any()) return [];
+
+        return pProgressTrailItems.Select((Func<TopDeskProgressTrailItem, SyncItem>)(itm => {
+            var fields = new Dictionary<string, object>();
+
+            Utilities.AddIfNotNull(fields, "memoText", itm.MemoText);
+            Utilities.AddIfNotNull(fields, "plainText", itm.PlainText);
+            Utilities.AddIfNotNull(fields, "operator.id", itm.Operator?.Id);
+            Utilities.AddIfNotNull(fields, "operator.name", itm.Operator?.Name);
+            Utilities.AddIfNotNull(fields, "person.id", itm.Person?.Id);
+            Utilities.AddIfNotNull(fields, "person.name", itm.Person?.Name);
+            Utilities.AddIfNotNull(fields, "flag", itm.Flag);
+            Utilities.AddIfNotNull(fields, "entryDate", (object?)itm.EntryDate);
+            Utilities.AddIfNotNull(fields, "creationDate", itm.CreationDate);
+
+            return new SyncItem() { Id = itm.Id, Fields = fields };
+        }));
     }
 }

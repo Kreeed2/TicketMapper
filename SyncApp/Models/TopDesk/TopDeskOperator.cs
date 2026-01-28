@@ -1,7 +1,7 @@
 ﻿using SyncApp.Helper;
 using System.Text.Json.Serialization;
 
-namespace SyncApp.Models;
+namespace SyncApp.Models.TopDesk;
 
 public record OperatorFull(
     [property: JsonPropertyName("id")] string Id,

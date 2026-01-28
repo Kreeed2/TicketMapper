@@ -1,5 +1,7 @@
+using CommandLine;
 using SyncApp.Models;
 using SyncApp.Services;
+using System.Collections;
 
 namespace SyncApp;
 
@@ -47,7 +49,8 @@ public class Worker(
     {
         foreach (var mapping in pConfig.Mappings)
         {
-            if (!pConfig.Systems.TryGetValue(mapping.TargetSystem, out var targetSysConfig))
+            var targetSysConfig = pConfig.Systems.FirstOrDefault(system => system.Name == mapping.TargetSystem);
+            if (targetSysConfig is null)
             {
                 pLogger.LogError("Target system '{targetSysConfig}' in mapping '{name}' is not defined in systems.", targetSysConfig, mapping.Name);
                 return false;
@@ -127,11 +130,10 @@ public class Worker(
 
     private bool TryGetSystemConfigs(MappingConfig mapping, out SystemConfig? sourceSysConfig, out SystemConfig? targetSysConfig)
     {
-        sourceSysConfig = null;
-        targetSysConfig = null;
+        sourceSysConfig = pConfig.Systems.FirstOrDefault(system =>  system.Name == mapping.SourceSystem);
+        targetSysConfig = pConfig.Systems.FirstOrDefault(system => system.Name == mapping.TargetSystem);
 
-        if (!pConfig.Systems.TryGetValue(mapping.SourceSystem, out sourceSysConfig) ||
-            !pConfig.Systems.TryGetValue(mapping.TargetSystem, out targetSysConfig))
+        if (sourceSysConfig is null || targetSysConfig is null)
         {
             pLogger.LogError("Invalid system keys in mapping {name}", mapping.Name);
             return false;
@@ -162,8 +164,17 @@ public class Worker(
             {
                 transformed = field.Source;
             }
+            else if (field.IsForeign
+                && pSource.ForeignFields.TryGetValue(field.Source, out var foreignValue))
+            {
+                if (foreignValue is IEnumerable)
+                {
+                    pLogger.LogWarning("Foreign field '{field}' contains multiple values.", field.Source);
 
-            if (pSource.Fields.TryGetValue(field.Source, out var value))
+                    target.ForeignFields[field.Target] = foreignValue;
+                }
+            }
+            else if (pSource.Fields.TryGetValue(field.Source, out var value))
             {
                 string? stringValue = value?.ToString();
                 transformed = await transformer.Transform(stringValue, field.Transform);

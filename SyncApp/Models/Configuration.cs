@@ -9,7 +9,7 @@ namespace SyncApp.Models
         public SettingsConfig Settings { get; set; } = new SettingsConfig();
 
         [JsonPropertyName("systems")]
-        public Dictionary<string, SystemConfig> Systems { get; set; } = [];
+        public List<SystemConfig> Systems { get; set; } = [];
 
         [JsonPropertyName("mappings")]
         public List<MappingConfig> Mappings { get; set; } = [];
@@ -35,6 +35,9 @@ namespace SyncApp.Models
 
     public record SystemConfig
     {
+        [JsonPropertyName("name")]
+        public required string Name { get; set; }
+
         [JsonPropertyName("type")]
         public SystemMappingType Type { get; set; }
 
@@ -97,6 +100,9 @@ namespace SyncApp.Models
 
         [JsonPropertyName("pattern")]
         public string? Pattern { get; set; } = null;
+
+        [JsonPropertyName("is_foreign")]
+        public bool IsForeign { get; set; } = false;
     }
 
     [JsonConverter(typeof(FieldMappingTransformConverter))]

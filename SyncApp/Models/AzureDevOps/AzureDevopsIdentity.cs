@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace SyncApp.Models;
+namespace SyncApp.Models.AzureDevOps;
 
 public record Account(
     [property: JsonPropertyName("$type")] string Type,

@@ -181,6 +181,33 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
                 bypassRules: false
             );
 
+
+            if (item.ForeignFields is not null 
+                && item.ForeignFields.Count > 0)
+            {
+                foreach (var foreignField in item.ForeignFields)
+                {
+                    switch (foreignField.Key.ToLower())
+                    {
+                        case "comments":
+                            foreach (var commentSyncItem in foreignField.Value)
+                            {
+                                var commentCreate = new CommentCreate() { Text = commentSyncItem.Fields["memoText"].ToString() };
+                                var createdComment =                                    
+                                    await pWitClient.AddCommentAsync(                                    
+                                    request: commentCreate,
+                                    project: project,
+                                    workItemId: workItemId
+                                );
+                            }
+
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
             pLogger.LogInformation("Successfully updated ADO {objectType} {id}", objectType, id);
         }
         catch (Exception ex)

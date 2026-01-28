@@ -3,6 +3,7 @@ using RestSharp.Authenticators;
 using SyncApp.Helper;
 using SyncApp.Interfaces;
 using SyncApp.Models;
+using SyncApp.Models.AzureDevOps;
 using SyncApp.Services.TopDesk;
 
 namespace SyncApp.Services.Devops;

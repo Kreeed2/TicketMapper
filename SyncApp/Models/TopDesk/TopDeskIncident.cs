@@ -1,7 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using SyncApp.Helper;
 
-namespace SyncApp.Models;
+namespace SyncApp.Models.TopDesk;
 
 public record Branch(
     [property: JsonPropertyName("id")] string Id,
@@ -225,7 +225,11 @@ public record TopDeskRequest(
     [property: JsonPropertyName("entryDate")] DateTime? EntryDate,
     [property: JsonPropertyName("memoText")] string MemoText,
     [property: JsonPropertyName("operator")] Operator Operator,
-    [property: JsonPropertyName("sender")] object Sender
+    [property: JsonPropertyName("person")] BudgetHolder Person,
+    [property: JsonPropertyName("creationDate")]
+    [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
+    DateTime? CreationDate,
+    [property: JsonPropertyName("flag")] int? Flag
 );
 
 public record Language(

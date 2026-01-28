@@ -56,9 +56,7 @@ namespace SyncApp
 
                     services.AddSingleton(provider =>
                     {
-                        var adoSystem = appConfig.Systems
-                            .FirstOrDefault(s => s.Value.Type == SystemMappingType.AzureDevOps)
-                            .Value;
+                        var adoSystem = appConfig.Systems.First(s => s.Type == SystemMappingType.AzureDevOps);
 
                         return new AzureDevOpsUserService(
                             adoSystem,
