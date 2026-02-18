@@ -21,6 +21,7 @@ public record TopDeskProgressTrailItem()
     public Operator? Operator { get; init; }
 
     #region Normal progress trail item fields 
+
     [property: JsonPropertyName("memoText")]
     public string? MemoText { get; init; }
 
@@ -39,6 +40,7 @@ public record TopDeskProgressTrailItem()
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     [property: JsonPropertyName("creationDate")]
     public DateTime? CreationDate { get; init; }
+
     #endregion
 
     #region Email progress trail item fields
@@ -54,6 +56,19 @@ public record TopDeskProgressTrailItem()
 
     [property: JsonPropertyName("user")]
     public Operator? User { get; init; }
+
+    #endregion
+
+    #region File progress trail item field
+
+    [property: JsonPropertyName("fileName")]
+    public string? FileName { get; init; }
+
+    [property: JsonPropertyName("downloadUrl")]
+    public string? DownloadUrl { get; init; }
+
+    [property: JsonPropertyName("size")]
+    public int? Size { get; init; }
 
     #endregion
 }

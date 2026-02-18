@@ -243,3 +243,9 @@ public record Location(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("room")] string Room
 );
+
+public record TopDeskAttachment(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("fileName")] string FileName,
+    [property: JsonPropertyName("size")] long Size
+);

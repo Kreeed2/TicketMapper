@@ -74,6 +74,12 @@
           "target": "Comments",
           "is_foreign": true,
           "transform": "none"
+        },
+        {
+          "source": "attachments",
+          "target": "attachments",
+          "is_foreign": true,
+          "transform": "none"
         }
       ]
     }

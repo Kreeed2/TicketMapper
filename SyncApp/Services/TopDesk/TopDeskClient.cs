@@ -49,7 +49,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             }
 
             request.AddQueryParameter("sort", "modificationDate:desc");
-            request.AddQueryParameter("query", "category.name==Zesa;processingStatus.id==160932da-84fb-5bb0-942a-e6be6e1f20e1");
+            request.AddQueryParameter("query", "category.name==Zesa;processingStatus.id==160932da-84fb-5bb0-942a-e6be6e1f20e1;optionalFields1.boolean1==true");
 
             var response = await httpClient.ExecuteAsync<IEnumerable<Incident>>(request);
 
@@ -62,10 +62,12 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                     var syncItem = MapIncidentToSyncItem(incident);
                     var requests = await GetRequestsAsync(incident.Id);
                     var operators = await GetOperatorAsync(incident.Operator.Id);
-                    var progressTrail = await GetProgressTrail(incident.Id);
+                    var progressTrail = await GetProgressTrailAsync(incident.Id);
+                    var attachments = await GetAttachmentsAsync(incident.Id);                    
 
                     syncItem.Fields["report"] = FormatRequests(requests);
                     syncItem.ForeignFields["progressTrail"] = FormatProgressTails(progressTrail);
+                    syncItem.ForeignFields["attachments"] = attachments;
 
                     syncItems.Add(syncItem);
                 }
@@ -226,7 +228,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         return null;
     }
 
-    private async Task<IEnumerable<TopDeskProgressTrailItem>> GetProgressTrail(string pIncidentId)
+    private async Task<IEnumerable<TopDeskProgressTrailItem>> GetProgressTrailAsync(string pIncidentId)
     {
         try
         {
@@ -236,7 +238,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskProgressTrailItem>>(request);
             if (response.IsSuccessStatusCode && response.Data is not null)
             {
-                return response.Data;
+                return response.Data.Reverse();
             } 
         }
         catch (Exception ex)
@@ -244,6 +246,32 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             logger.LogError(ex, "Error fetching progress trail for {incidentId}", pIncidentId);
         }
         return [];
+    }
+
+    private async Task<IEnumerable<SyncItem>> GetAttachmentsAsync(string pIncidentId)
+    {
+        var request = CreateBaseRequest($"/tas/api/incidents/id/{pIncidentId}/attachments");
+        if (request is null) return [];
+
+        var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskAttachment>>(request);
+        if (!response.IsSuccessStatusCode || response.Data is null) return [];
+
+        var attachmentItems = new List<SyncItem>();
+        foreach (var attachment in response.Data)
+        {
+            // Download der eigentlichen Datei
+            var downloadRequest = CreateBaseRequest($"/tas/api/incidents/id/{pIncidentId}/attachments/{attachment.Id}/download");
+            var fileData = await httpClient.DownloadDataAsync(downloadRequest!);
+
+            if (fileData != null)
+            {
+                var item = new SyncItem { Id = attachment.Id };
+                item.Fields["fileName"] = attachment.FileName;
+                item.Fields["content"] = fileData;
+                attachmentItems.Add(item);
+            }
+        }
+        return attachmentItems;
     }
 
     private static string FormatRequests(IEnumerable<TopDeskRequest> requests)
@@ -264,7 +292,10 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
     {
         if (pProgressTrailItems is null || !pProgressTrailItems.Any()) return [];
 
-        return pProgressTrailItems.Select((Func<TopDeskProgressTrailItem, SyncItem>)(itm => {
+        return pProgressTrailItems
+            .Where(itm => itm.MemoText?.Length > 0)
+            .Select(itm =>
+        {
             var fields = new Dictionary<string, object>();
 
             Utilities.AddIfNotNull(fields, "memoText", itm.MemoText);
@@ -274,10 +305,10 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             Utilities.AddIfNotNull(fields, "person.id", itm.Person?.Id);
             Utilities.AddIfNotNull(fields, "person.name", itm.Person?.Name);
             Utilities.AddIfNotNull(fields, "flag", itm.Flag);
-            Utilities.AddIfNotNull(fields, "entryDate", (object?)itm.EntryDate);
+            Utilities.AddIfNotNull(fields, "entryDate", itm.EntryDate);
             Utilities.AddIfNotNull(fields, "creationDate", itm.CreationDate);
 
             return new SyncItem() { Id = itm.Id, Fields = fields };
-        }));
+        });
     }
 }

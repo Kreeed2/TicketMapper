@@ -4,6 +4,8 @@ using Microsoft.VisualStudio.Services.WebApi.Patch;
 using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
 using SyncApp.Interfaces;
 using SyncApp.Models;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SyncApp.Services.Devops;
 
@@ -182,30 +184,9 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
             );
 
 
-            if (item.ForeignFields is not null 
-                && item.ForeignFields.Count > 0)
+            if (item.ForeignFields != null && item.ForeignFields.Count > 0)
             {
-                foreach (var foreignField in item.ForeignFields)
-                {
-                    switch (foreignField.Key.ToLower())
-                    {
-                        case "comments":
-                            foreach (var commentSyncItem in foreignField.Value)
-                            {
-                                var commentCreate = new CommentCreate() { Text = commentSyncItem.Fields["memoText"].ToString() };
-                                var createdComment =                                    
-                                    await pWitClient.AddCommentAsync(                                    
-                                    request: commentCreate,
-                                    project: project,
-                                    workItemId: workItemId
-                                );
-                            }
-
-                            break;
-                        default:
-                            break;
-                    }
-                }
+                await ProcessForeignFieldsAsync(project, workItemId, item.ForeignFields);
             }
 
             pLogger.LogInformation("Successfully updated ADO {objectType} {id}", objectType, id);
@@ -215,5 +196,163 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
             pLogger.LogError(ex, "Error updating ADO {objectType} {id}", objectType, id);
             throw;
         }
+    }
+    
+    private async Task ProcessForeignFieldsAsync(string pProject, int pWorkItemId, Dictionary<string, IEnumerable<SyncItem>> pForeignFields)
+    {
+        foreach (var foreignField in pForeignFields)
+        {
+            if (foreignField.Key.Equals("comments", StringComparison.OrdinalIgnoreCase))
+            {
+                await CreateCommentsAsync(pProject, pWorkItemId, foreignField.Value);
+            }
+            else if (foreignField.Key.Equals("attachments", StringComparison.OrdinalIgnoreCase))
+            {
+                await CreateAttachmentsAsync(pProject, pWorkItemId, foreignField.Value);
+            }
+        }
+    }
+
+    private async Task CreateCommentsAsync(string pProject, int pWorkItemId, IEnumerable<SyncItem> pComments)
+    {
+        var existingCommentsResponse = await pWitClient.GetCommentsAsync(pProject, pWorkItemId);
+        var existingComments = existingCommentsResponse?.Comments ?? [];
+
+        foreach (var commentSyncItem in pComments)
+        {
+            var commentText = GetCommentText(commentSyncItem);
+
+            if (!string.IsNullOrWhiteSpace(commentText))
+            {
+                var sb = new StringBuilder();
+
+                // Uniquer Marker, um den Kommentar wiederzufinden
+                var uniqueMarker = $"[SYNC:{commentSyncItem.Id}]";
+
+                // Operator des Kommentars in TopDesk
+                if (commentSyncItem.Fields.TryGetValue("operator.name", out var operatorName))
+                    sb.AppendLine(operatorName.ToString() + Environment.NewLine);
+
+                sb.AppendLine(commentText + Environment.NewLine);
+
+                sb.Append(uniqueMarker);
+
+                // Prüfen, ob der Kommentar schon existiert (anhand des Markers)
+                var existingComment = existingComments.FirstOrDefault(c => c.Text != null && c.Text.Contains(uniqueMarker));
+
+                if (existingComment != null)
+                {
+                    // Update nur wenn sich der Text geändert hat
+                    if (!AreCommentTextsEqual(existingComment.Text, sb.ToString()))
+                    {
+                        var commentUpdate = new CommentUpdate() { Text = sb.ToString() };
+                        await pWitClient.UpdateCommentAsync(
+                            request: commentUpdate,
+                            project: pProject,
+                            workItemId: pWorkItemId,
+                            commentId: existingComment.Id
+                        );
+                        pLogger.LogInformation("Updated comment {commentId} on work item {workItemId}.", existingComment.Id, pWorkItemId);
+                    }
+                }
+                else
+                {
+                    // Neu erstellen
+                    var commentCreate = new CommentCreate() { Text = sb.ToString() };
+                    await pWitClient.AddCommentAsync(
+                       request: commentCreate,
+                       project: pProject,
+                       workItemId: pWorkItemId
+                    );
+                    pLogger.LogInformation("Created new comment on work item {workItemId}.", pWorkItemId);
+                }
+            }
+        }
+    }
+
+    private async Task CreateAttachmentsAsync(string pProject, int pWorkItemId, IEnumerable<SyncItem> pAttachments)
+    {
+        // Bestehende Work Item Details abrufen, um Duplikate zu vermeiden
+        var workItem = await pWitClient.GetWorkItemAsync(pWorkItemId, expand: WorkItemExpand.Relations);
+        var existingFiles = workItem.Relations?
+            .Where(r => r.Rel == "AttachedFile")
+            .Select(r => r.Attributes["name"]?.ToString())
+            .ToList() ?? [];
+
+        foreach (var attachmentItem in pAttachments)
+        {
+            if (!attachmentItem.Fields.TryGetValue("fileName", out var nameObj) ||
+                !attachmentItem.Fields.TryGetValue("content", out var contentObj)) continue;
+
+            string fileName = nameObj.ToString()!;
+            byte[] content = (byte[])contentObj;
+
+            // Prüfen, ob Datei bereits angehängt ist (einfacher Namensvergleich)
+            if (existingFiles.Contains(fileName)) continue;
+
+            using var stream = new MemoryStream(content);
+
+            // 1. Datei zu ADO hochladen
+            var attachmentRef = await pWitClient.CreateAttachmentAsync(stream, fileName: fileName, project: pProject);
+
+            // 2. Verknüpfung am Work Item erstellen
+            var patchDocument = new JsonPatchDocument
+            {
+                new JsonPatchOperation
+                {
+                    Operation = Operation.Add,
+                    Path = "/relations/-",
+                    Value = new
+                    {
+                        rel = "AttachedFile",
+                        url = attachmentRef.Url,
+                        attributes = new { comment = $"Synced from TopDesk: {attachmentItem.Id}" }
+                    }
+                }
+            };
+
+            await pWitClient.UpdateWorkItemAsync(patchDocument, pWorkItemId);
+            pLogger.LogInformation("Attachment {fileName} added to Work Item {pWorkItemId}.", fileName, pWorkItemId);
+        }
+    }
+
+    private static bool AreCommentTextsEqual(string pText1, string pText2)
+    {
+        return NormalizeCommentText(pText1).Equals(NormalizeCommentText(pText2), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeCommentText(string pText)
+    {
+        if (string.IsNullOrEmpty(pText)) return string.Empty;
+        // Entferne Whitespace um Formatierungsunterschiede zu ignorieren
+        return Regex.Replace(pText, @"\s+", "");
+    }
+
+    private static string GetCommentText(SyncItem pCommentItem)
+    {
+        // Flexible field lookup for comment text
+        string[] candidates = ["memoText", "text", "body", "content"];
+
+        foreach (var key in candidates)
+        {
+            if (pCommentItem.Fields.TryGetValue(key, out var val) && val != null)
+            {
+                var str = val.ToString();
+                if (!string.IsNullOrWhiteSpace(str)) return str;
+            }
+        }
+
+        // Final fallback: Check case-insensitive keys
+        foreach (var key in candidates)
+        {
+            var match = pCommentItem.Fields.Keys.FirstOrDefault(k => k.Equals(key, StringComparison.OrdinalIgnoreCase));
+            if (match != null && pCommentItem.Fields[match] != null)
+            {
+                var str = pCommentItem.Fields[match].ToString();
+                if (!string.IsNullOrWhiteSpace(str)) return str;
+            }
+        }
+
+        return string.Empty;
     }
 }
