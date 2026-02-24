@@ -204,6 +204,10 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
             {
                 await CreateCommentsAsync(pProject, pWorkItemId, foreignField.Value);
             }
+            else if (foreignField.Key.Equals("attachments", StringComparison.OrdinalIgnoreCase))
+            {
+                await CreateAttachmentsAsync(pProject, pWorkItemId, foreignField.Value);
+            }
         }
     }
 
@@ -255,6 +259,52 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
                     pLogger.LogInformation("Created new comment on work item {workItemId}.", pWorkItemId);
                 }
             }
+        }
+    }
+
+    private async Task CreateAttachmentsAsync(string pProject, int pWorkItemId, IEnumerable<SyncItem> pAttachments)
+    {
+        // Bestehende Work Item Details abrufen, um Duplikate zu vermeiden
+        var workItem = await pWitClient.GetWorkItemAsync(pWorkItemId, expand: WorkItemExpand.Relations);
+        var existingFiles = workItem.Relations?
+            .Where(r => r.Rel == "AttachedFile")
+            .Select(r => r.Attributes["name"]?.ToString())
+            .ToList() ?? [];
+
+        foreach (var attachmentItem in pAttachments)
+        {
+            if (!attachmentItem.Fields.TryGetValue("fileName", out var nameObj) ||
+                !attachmentItem.Fields.TryGetValue("content", out var contentObj)) continue;
+
+            string fileName = nameObj.ToString()!;
+            byte[] content = (byte[])contentObj;
+
+            // Prüfen, ob Datei bereits angehängt ist (einfacher Namensvergleich)
+            if (existingFiles.Contains(fileName)) continue;
+
+            using var stream = new MemoryStream(content);
+
+            // 1. Datei zu ADO hochladen
+            var attachmentRef = await pWitClient.CreateAttachmentAsync(stream, fileName: fileName, project: pProject);
+
+            // 2. Verknüpfung am Work Item erstellen
+            var patchDocument = new JsonPatchDocument
+            {
+                new JsonPatchOperation
+                {
+                    Operation = Operation.Add,
+                    Path = "/relations/-",
+                    Value = new
+                    {
+                        rel = "AttachedFile",
+                        url = attachmentRef.Url,
+                        attributes = new { comment = $"Synced from TopDesk: {attachmentItem.Id}" }
+                    }
+                }
+            };
+
+            await pWitClient.UpdateWorkItemAsync(patchDocument, pWorkItemId);
+            pLogger.LogInformation("Attachment {fileName} added to Work Item {pWorkItemId}.", fileName, pWorkItemId);
         }
     }
 

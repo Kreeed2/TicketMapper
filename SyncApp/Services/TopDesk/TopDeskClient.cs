@@ -85,6 +85,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             }
 
             request.AddQueryParameter("sort", "modificationDate:desc");
+            request.AddQueryParameter("pageSize", 50);
             request.AddQueryParameter("query", "category.name==Zesa;processingStatus.id==160932da-84fb-5bb0-942a-e6be6e1f20e1");
 
             var response = await httpClient.ExecuteAsync<IEnumerable<Incident>>(request);
@@ -98,9 +99,11 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                     var requests = await GetRequestsAsync(incident.Id);
                     var operators = await GetOperatorAsync(incident.Operator.Id);
                     var progressTrail = await GetProgressTrail(incident.Id);
+                    var attachments = await GetAttachmentsAsync(incident.Id);
 
                     syncItem.Fields["report"] = FormatRequests(requests);
                     syncItem.ForeignFields["progressTrail"] = FormatProgressTails(progressTrail);
+                    syncItem.ForeignFields["attachments"] = attachments;
 
                     syncItems.Add(syncItem);
                 }
@@ -139,8 +142,9 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                 return [];
             }
 
-            request.AddQueryParameter("pageSize", "50");
+            request.AddQueryParameter("pageSize", 50);
             request.AddQueryParameter("sort", "modificationDate:desc");
+            request.AddQueryParameter("query", "category.name==Zesa");
 
             var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskChange>>(request);
 
@@ -224,7 +228,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                 return [];
             }
 
-            request.AddQueryParameter("pageSize", "50");
+            request.AddQueryParameter("pageSize", 50);
             request.AddQueryParameter("sort", "modificationDate:desc");
 
             var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskChangeActivity>>(request);
@@ -532,6 +536,45 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             logger.LogError(ex, "Error fetching operator {pOperatorId}", pOperatorId);
         }
         return null;
+    }
+
+    /// <summary>
+    /// Retrieves attachment metadata for the specified incident and downloads each attachment's binary content.
+    /// For each attachment found the method creates a corresponding <see cref="SyncItem"/> with:
+    /// - <c>Id</c> set to the attachment id,
+    /// - <c>Fields["fileName"]</c> containing the attachment file name,
+    /// - <c>Fields["content"]</c> containing the downloaded binary data.
+    /// Early returns an empty collection if the request cannot be created, the HTTP call fails,
+    /// or no attachment data is returned. Any exceptions are logged and result in an empty collection.
+    /// </summary>
+    /// <param name="incidentId">The TopDesk incident identifier to fetch attachments for.</param>
+    /// <returns>
+    /// A collection of <see cref="SyncItem"/> objects representing downloaded attachments; empty if none or on error.
+    /// </returns>
+    private async Task<IEnumerable<SyncItem>> GetAttachmentsAsync(string incidentId)
+    {
+        var request = CreateBaseRequest($"/tas/api/incidents/id/{incidentId}/attachments");
+        if (request is null) return [];
+
+        var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskAttachment>>(request);
+        if (!response.IsSuccessStatusCode || response.Data is null) return [];
+
+        var attachmentItems = new List<SyncItem>();
+        foreach (var attachment in response.Data)
+        {
+            // Download der eigentlichen Datei
+            var downloadRequest = CreateBaseRequest($"/tas/api/incidents/id/{incidentId}/attachments/{attachment.Id}/download");
+            var fileData = await httpClient.DownloadDataAsync(downloadRequest!);
+
+            if (fileData != null)
+            {
+                var item = new SyncItem { Id = attachment.Id };
+                item.Fields["fileName"] = attachment.FileName;
+                item.Fields["content"] = fileData; // Binärdaten speichern
+                attachmentItems.Add(item);
+            }
+        }
+        return attachmentItems;
     }
 
     /// <summary>
