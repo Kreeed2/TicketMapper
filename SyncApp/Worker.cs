@@ -1,5 +1,4 @@
 using CommandLine;
-using Microsoft.TeamFoundation.Common;
 using SyncApp.Models;
 using SyncApp.Services;
 using System.Collections;
@@ -170,6 +169,8 @@ public class Worker(
             {
                 if (foreignValue is IEnumerable)
                 {
+                    pLogger.LogWarning("Foreign field '{field}' contains multiple values.", field.Source);
+
                     target.ForeignFields[field.Target] = foreignValue;
                 }
             }
@@ -179,7 +180,7 @@ public class Worker(
                 transformed = await transformer.Transform(stringValue, field.Transform);
             }
 
-            if (!transformed.IsNullOrEmpty())
+            if (transformed is not null)
             {
                 target.Fields[field.Target] = transformed;
             }

@@ -58,17 +58,4 @@ public record TopDeskProgressTrailItem()
     public Operator? User { get; init; }
 
     #endregion
-
-    #region File progress trail item field
-
-    [property: JsonPropertyName("fileName")]
-    public string? FileName { get; init; }
-
-    [property: JsonPropertyName("downloadUrl")]
-    public string? DownloadUrl { get; init; }
-
-    [property: JsonPropertyName("size")]
-    public int? Size { get; init; }
-
-    #endregion
 }

@@ -3,12 +3,12 @@ using SyncApp.Models;
 
 namespace SyncApp.Services;
 
-public class TransformerFactory(IServiceProvider pServiceProvider, ILoggerFactory pLoggerFactory)
+public class TransformerFactory(IServiceProvider pServiceProvider)
 {
     SystemMappingType mSourceSystem;
     SystemMappingType mTargetSystem;
 
-    public void Configure(SystemMappingType pSourceSystem, SystemMappingType pTargetSystem) 
+    public void Configure(SystemMappingType pSourceSystem, SystemMappingType pTargetSystem)
     {
         mSourceSystem = pSourceSystem;
         mTargetSystem = pTargetSystem;
@@ -21,7 +21,9 @@ public class TransformerFactory(IServiceProvider pServiceProvider, ILoggerFactor
             case FieldMappingTransform.None:
             case FieldMappingTransform.Static:
             case FieldMappingTransform.HtmlToMarkdown:
-                return pServiceProvider.GetRequiredService<TextTransformer>();
+            case FieldMappingTransform.ValueMap:
+                var textService = pServiceProvider.GetRequiredService<TextTransformer>();
+                return textService.Configure(mSourceSystem, mTargetSystem, pFieldMapping);
 
             case FieldMappingTransform.Lookup:
             case FieldMappingTransform.Pattern:

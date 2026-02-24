@@ -103,6 +103,9 @@ namespace SyncApp.Models
 
         [JsonPropertyName("is_foreign")]
         public bool IsForeign { get; set; } = false;
+
+        [JsonPropertyName("value_mapping")]
+        public Dictionary<string, string> ValueMapping { get; set; } = [];
     }
 
     [JsonConverter(typeof(FieldMappingTransformConverter))]
@@ -113,6 +116,7 @@ namespace SyncApp.Models
         Static,
         HtmlToMarkdown,
         Pattern,
+        ValueMap,
     }
 
     [JsonConverter(typeof(SystemMappingTypeConverter))]

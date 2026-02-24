@@ -4,7 +4,6 @@ using Microsoft.VisualStudio.Services.WebApi.Patch;
 using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
 using SyncApp.Interfaces;
 using SyncApp.Models;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SyncApp.Services.Devops;
@@ -197,7 +196,6 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
             throw;
         }
     }
-    
     private async Task ProcessForeignFieldsAsync(string pProject, int pWorkItemId, Dictionary<string, IEnumerable<SyncItem>> pForeignFields)
     {
         foreach (var foreignField in pForeignFields)
@@ -205,10 +203,6 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
             if (foreignField.Key.Equals("comments", StringComparison.OrdinalIgnoreCase))
             {
                 await CreateCommentsAsync(pProject, pWorkItemId, foreignField.Value);
-            }
-            else if (foreignField.Key.Equals("attachments", StringComparison.OrdinalIgnoreCase))
-            {
-                await CreateAttachmentsAsync(pProject, pWorkItemId, foreignField.Value);
             }
         }
     }
@@ -224,18 +218,12 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
 
             if (!string.IsNullOrWhiteSpace(commentText))
             {
-                var sb = new StringBuilder();
-
                 // Uniquer Marker, um den Kommentar wiederzufinden
                 var uniqueMarker = $"[SYNC:{commentSyncItem.Id}]";
-
-                // Operator des Kommentars in TopDesk
-                if (commentSyncItem.Fields.TryGetValue("operator.name", out var operatorName))
-                    sb.AppendLine(operatorName.ToString() + Environment.NewLine);
-
-                sb.AppendLine(commentText + Environment.NewLine);
-
-                sb.Append(uniqueMarker);
+                // Ersteller hinzufügen
+                commentSyncItem.Fields.TryGetValue("operator.name", out var commentOperator);
+                // Wir hängen den Marker an den Text an
+                var fullCommentText = $"{commentOperator ?? "Kein Ersteller gefunden"}<br><br>{commentText}<br><br>{uniqueMarker}";
 
                 // Prüfen, ob der Kommentar schon existiert (anhand des Markers)
                 var existingComment = existingComments.FirstOrDefault(c => c.Text != null && c.Text.Contains(uniqueMarker));
@@ -243,9 +231,9 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
                 if (existingComment != null)
                 {
                     // Update nur wenn sich der Text geändert hat
-                    if (!AreCommentTextsEqual(existingComment.Text, sb.ToString()))
+                    if (!AreCommentTextsEqual(existingComment.Text, fullCommentText))
                     {
-                        var commentUpdate = new CommentUpdate() { Text = sb.ToString() };
+                        var commentUpdate = new CommentUpdate() { Text = fullCommentText };
                         await pWitClient.UpdateCommentAsync(
                             request: commentUpdate,
                             project: pProject,
@@ -258,7 +246,7 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
                 else
                 {
                     // Neu erstellen
-                    var commentCreate = new CommentCreate() { Text = sb.ToString() };
+                    var commentCreate = new CommentCreate() { Text = fullCommentText };
                     await pWitClient.AddCommentAsync(
                        request: commentCreate,
                        project: pProject,
@@ -267,52 +255,6 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
                     pLogger.LogInformation("Created new comment on work item {workItemId}.", pWorkItemId);
                 }
             }
-        }
-    }
-
-    private async Task CreateAttachmentsAsync(string pProject, int pWorkItemId, IEnumerable<SyncItem> pAttachments)
-    {
-        // Bestehende Work Item Details abrufen, um Duplikate zu vermeiden
-        var workItem = await pWitClient.GetWorkItemAsync(pWorkItemId, expand: WorkItemExpand.Relations);
-        var existingFiles = workItem.Relations?
-            .Where(r => r.Rel == "AttachedFile")
-            .Select(r => r.Attributes["name"]?.ToString())
-            .ToList() ?? [];
-
-        foreach (var attachmentItem in pAttachments)
-        {
-            if (!attachmentItem.Fields.TryGetValue("fileName", out var nameObj) ||
-                !attachmentItem.Fields.TryGetValue("content", out var contentObj)) continue;
-
-            string fileName = nameObj.ToString()!;
-            byte[] content = (byte[])contentObj;
-
-            // Prüfen, ob Datei bereits angehängt ist (einfacher Namensvergleich)
-            if (existingFiles.Contains(fileName)) continue;
-
-            using var stream = new MemoryStream(content);
-
-            // 1. Datei zu ADO hochladen
-            var attachmentRef = await pWitClient.CreateAttachmentAsync(stream, fileName: fileName, project: pProject);
-
-            // 2. Verknüpfung am Work Item erstellen
-            var patchDocument = new JsonPatchDocument
-            {
-                new JsonPatchOperation
-                {
-                    Operation = Operation.Add,
-                    Path = "/relations/-",
-                    Value = new
-                    {
-                        rel = "AttachedFile",
-                        url = attachmentRef.Url,
-                        attributes = new { comment = $"Synced from TopDesk: {attachmentItem.Id}" }
-                    }
-                }
-            };
-
-            await pWitClient.UpdateWorkItemAsync(patchDocument, pWorkItemId);
-            pLogger.LogInformation("Attachment {fileName} added to Work Item {pWorkItemId}.", fileName, pWorkItemId);
         }
     }
 
