@@ -35,7 +35,16 @@ public class TopDeskDateTimeConverter : JsonConverter<DateTime?>
             "yyyy-MM-ddTHH:mm:ss.fff",
             System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.AssumeUniversal,
-            out var result))
+            out DateTime result))
+        {
+            return result;
+        }
+        else if (DateTime.TryParseExact(
+            dateString,
+            "yyyy-MM-ddTHH:mm:ss",
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal,
+            out result))
         {
             return result;
         }

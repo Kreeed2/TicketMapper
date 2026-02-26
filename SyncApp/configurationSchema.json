@@ -101,7 +101,8 @@
                     "none",
                     "static",
                     "pattern",
-                    "html_to_markdown"
+                    "html_to_markdown",
+                    "value_map"
                   ]
                 },
                 "update": {

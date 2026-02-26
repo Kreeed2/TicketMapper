@@ -18,7 +18,7 @@ public record TopDeskProgressTrailItem()
     public DateTime? EntryDate { get; init; }
 
     [property: JsonPropertyName("operator")]
-    public Operator? Operator { get; init; }
+    public TopDeskTuple? Operator { get; init; }
 
     #region Normal progress trail item fields 
 
@@ -32,7 +32,7 @@ public record TopDeskProgressTrailItem()
     public bool? InvisibleForCaller { get; init; }
 
     [property: JsonPropertyName("person")]
-    public Operator? Person { get; init; }
+    public TopDeskTuple? Person { get; init; }
 
     [property: JsonPropertyName("plainText")]
     public string? PlainText { get; init; }
@@ -55,7 +55,7 @@ public record TopDeskProgressTrailItem()
     public string? Details { get; init; }
 
     [property: JsonPropertyName("user")]
-    public Operator? User { get; init; }
+    public TopDeskTuple? User { get; init; }
 
     #endregion
 }

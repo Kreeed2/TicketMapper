@@ -17,7 +17,7 @@ public record OperatorFull(
     [property: JsonPropertyName("birthName")] string BirthName,
     [property: JsonPropertyName("title")] string Title,
     [property: JsonPropertyName("gender")] string Gender,
-    [property: JsonPropertyName("language")] Language Language,
+    [property: JsonPropertyName("language")] TopDeskTuple Language,
     [property: JsonPropertyName("branch")] Branch Branch,
     [property: JsonPropertyName("location")] Location Location,
     [property: JsonPropertyName("telephone")] string Telephone,
@@ -29,8 +29,8 @@ public record OperatorFull(
     [property: JsonPropertyName("loginPermission")] bool? LoginPermission,
     [property: JsonPropertyName("linkedPerson")] object LinkedPerson,
     [property: JsonPropertyName("jobTitle")] string JobTitle,
-    [property: JsonPropertyName("department")] Department Department,
-    [property: JsonPropertyName("budgetHolder")] BudgetHolder BudgetHolder,
+    [property: JsonPropertyName("department")] TopDeskTuple Department,
+    [property: JsonPropertyName("budgetHolder")] TopDeskTuple BudgetHolder,
     [property: JsonPropertyName("employeeNumber")] string EmployeeNumber,
     [property: JsonPropertyName("hourlyRate")] double? HourlyRate,
     [property: JsonPropertyName("networkLoginName")] string NetworkLoginName,
@@ -63,10 +63,10 @@ public record OperatorFull(
     [property: JsonPropertyName("accountManager")] bool? AccountManager,
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     [property: JsonPropertyName("creationDate")] DateTime? CreationDate,
-    [property: JsonPropertyName("creator")] Creator Creator,
+    [property: JsonPropertyName("creator")] TopDeskTuple Creator,
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     [property: JsonPropertyName("modificationDate")] DateTime? ModificationDate,
-    [property: JsonPropertyName("modifier")] Modifier Modifier,
+    [property: JsonPropertyName("modifier")] TopDeskTuple Modifier,
     [property: JsonPropertyName("hasApplicationPasswords")] bool? HasApplicationPasswords,
     [property: JsonPropertyName("optionalFields1")] OptionalFields OptionalFields1,
     [property: JsonPropertyName("optionalFields2")] OptionalFields OptionalFields2

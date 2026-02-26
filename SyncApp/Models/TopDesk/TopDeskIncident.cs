@@ -12,11 +12,6 @@ public record Branch(
     [property: JsonPropertyName("extraB")] object ExtraB
 );
 
-public record BudgetHolder(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
 public record Caller(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("dynamicName")] string DynamicName,
@@ -24,8 +19,8 @@ public record Caller(
     [property: JsonPropertyName("phoneNumber")] string PhoneNumber,
     [property: JsonPropertyName("mobileNumber")] string MobileNumber,
     [property: JsonPropertyName("branch")] Branch Branch,
-    [property: JsonPropertyName("department")] Department Department,
-    [property: JsonPropertyName("budgetHolder")] BudgetHolder BudgetHolder
+    [property: JsonPropertyName("department")] TopDeskTuple Department,
+    [property: JsonPropertyName("budgetHolder")] TopDeskTuple BudgetHolder
 );
 
 public record CallerBranch(
@@ -35,52 +30,6 @@ public record CallerBranch(
     [property: JsonPropertyName("timeZone")] string TimeZone,
     [property: JsonPropertyName("extraA")] object ExtraA,
     [property: JsonPropertyName("extraB")] object ExtraB
-);
-
-public record CallerLocation(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record Category(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record Creator(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record Department(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record Duration(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record EntryType(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record Modifier(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record Operator(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("status")] string Status,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record OperatorGroup(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
 );
 
 public record OptionalFields(
@@ -116,16 +65,6 @@ public record OptionalFields(
     [property: JsonPropertyName("searchlist5")] object Searchlist5
 );
 
-public record Priority(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record ProcessingStatus(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
 public record Incident(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("status")] string Status,
@@ -136,23 +75,23 @@ public record Incident(
     [property: JsonPropertyName("attachments")] string Attachments,
     [property: JsonPropertyName("caller")] Caller Caller,
     [property: JsonPropertyName("callerBranch")] CallerBranch CallerBranch,
-    [property: JsonPropertyName("callerLocation")] CallerLocation CallerLocation,
+    [property: JsonPropertyName("callerLocation")] TopDeskTuple CallerLocation,
     [property: JsonPropertyName("branchExtraFieldA")] object BranchExtraFieldA,
     [property: JsonPropertyName("branchExtraFieldB")] object BranchExtraFieldB,
     [property: JsonPropertyName("briefDescription")] string BriefDescription,
     [property: JsonPropertyName("externalNumber")] string ExternalNumber,
-    [property: JsonPropertyName("category")] Category Category,
-    [property: JsonPropertyName("subcategory")] Subcategory Subcategory,
+    [property: JsonPropertyName("category")] TopDeskTuple Category,
+    [property: JsonPropertyName("subcategory")] TopDeskTuple Subcategory,
     [property: JsonPropertyName("callType")] object CallType,
-    [property: JsonPropertyName("entryType")] EntryType EntryType,
+    [property: JsonPropertyName("entryType")] TopDeskTuple EntryType,
     [property: JsonPropertyName("object")] object Object,
     [property: JsonPropertyName("asset")] object Asset,
     [property: JsonPropertyName("branch")] object Branch,
     [property: JsonPropertyName("location")] object Location,
     [property: JsonPropertyName("impact")] object Impact,
     [property: JsonPropertyName("urgency")] object Urgency,
-    [property: JsonPropertyName("priority")] Priority Priority,
-    [property: JsonPropertyName("duration")] Duration Duration,
+    [property: JsonPropertyName("priority")] TopDeskTuple Priority,
+    [property: JsonPropertyName("duration")] TopDeskTuple Duration,
     [property: JsonPropertyName("actualDuration")] int? ActualDuration,
     [property: JsonPropertyName("targetDate")]
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
@@ -163,10 +102,10 @@ public record Incident(
     [property: JsonPropertyName("onHoldDuration")] int? OnHoldDuration,
     [property: JsonPropertyName("feedbackMessage")] object FeedbackMessage,
     [property: JsonPropertyName("feedbackRating")] object FeedbackRating,
-    [property: JsonPropertyName("operator")] Operator Operator,
-    [property: JsonPropertyName("operatorGroup")] OperatorGroup OperatorGroup,
+    [property: JsonPropertyName("operator")] TopDeskTuple Operator,
+    [property: JsonPropertyName("operatorGroup")] TopDeskTuple OperatorGroup,
     [property: JsonPropertyName("supplier")] object Supplier,
-    [property: JsonPropertyName("processingStatus")] ProcessingStatus ProcessingStatus,
+    [property: JsonPropertyName("processingStatus")] TopDeskTuple ProcessingStatus,
     [property: JsonPropertyName("responded")] bool? Responded,
     [property: JsonPropertyName("responseDate")] object ResponseDate,
     [property: JsonPropertyName("completed")] bool? Completed,
@@ -193,11 +132,11 @@ public record Incident(
     [property: JsonPropertyName("callDate")]
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     DateTime? CallDate,
-    [property: JsonPropertyName("creator")] Creator Creator,
+    [property: JsonPropertyName("creator")] TopDeskTuple Creator,
     [property: JsonPropertyName("creationDate")]
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     DateTime? CreationDate,
-    [property: JsonPropertyName("modifier")] Modifier Modifier,
+    [property: JsonPropertyName("modifier")] TopDeskTuple Modifier,
     [property: JsonPropertyName("modificationDate")]
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     DateTime? ModificationDate,
@@ -214,27 +153,17 @@ public record Incident(
     [property: JsonPropertyName("partialIncidents")] IReadOnlyList<object> PartialIncidents
 );
 
-public record Subcategory(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
 public record TopDeskRequest(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     [property: JsonPropertyName("entryDate")] DateTime? EntryDate,
     [property: JsonPropertyName("memoText")] string MemoText,
-    [property: JsonPropertyName("operator")] Operator Operator,
-    [property: JsonPropertyName("person")] BudgetHolder Person,
+    [property: JsonPropertyName("operator")] TopDeskTuple Operator,
+    [property: JsonPropertyName("person")] TopDeskTuple Person,
     [property: JsonPropertyName("creationDate")]
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     DateTime? CreationDate,
     [property: JsonPropertyName("flag")] int? Flag
-);
-
-public record Language(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
 );
 
 public record Location(

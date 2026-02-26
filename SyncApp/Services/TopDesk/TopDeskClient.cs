@@ -85,8 +85,8 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             }
 
             request.AddQueryParameter("sort", "modificationDate:desc");
-            request.AddQueryParameter("pageSize", 50);
-            request.AddQueryParameter("query", "category.name==Zesa;processingStatus.id==160932da-84fb-5bb0-942a-e6be6e1f20e1");
+            request.AddQueryParameter("pageSize", 100);
+            request.AddQueryParameter("query", "category.name==Zesa");
 
             var response = await httpClient.ExecuteAsync<IEnumerable<Incident>>(request);
 
@@ -97,7 +97,6 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
                 {
                     var syncItem = MapIncidentToSyncItem(incident);
                     var requests = await GetRequestsAsync(incident.Id);
-                    var operators = await GetOperatorAsync(incident.Operator.Id);
                     var progressTrail = await GetProgressTrail(incident.Id);
                     var attachments = await GetAttachmentsAsync(incident.Id);
 
@@ -143,26 +142,34 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             }
 
             request.AddQueryParameter("pageSize", 50);
-            request.AddQueryParameter("sort", "modificationDate:desc");
             request.AddQueryParameter("query", "category.name==Zesa");
+            request.AddQueryParameter("sort", "simple.closedDate:asc");
 
-            var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskChange>>(request);
+            var response = await httpClient.ExecuteAsync<TopDeskChangeResult>(request);
 
             if (response.IsSuccessStatusCode && response.Data is not null)
             {
-                var changes = response.Data;
+                var changes = response.Data?.Results;
                 var syncItems = new List<SyncItem>();
-                foreach (var change in changes)
+                foreach (var change in changes ?? [])
                 {
                     var syncItem = MapChangeToSyncItem(change);
 
-                    // Fetch activities belonging to this change
-                    var changeId = change.Id;
-                    if (!string.IsNullOrEmpty(changeId))
-                    {
-                        var activities = await GetChangeActivitiesForChangeAsync(changeId);
-                        syncItem.ForeignFields["changeActivities"] = activities;
-                    }
+                    var requests = await GetRequestsAsync(change.Id);
+                    var progressTrail = await GetProgressTrail(change.Id);
+                    var attachments = await GetAttachmentsAsync(change.Id);
+
+                    syncItem.Fields["report"] = FormatRequests(requests);
+                    syncItem.ForeignFields["progressTrail"] = FormatProgressTails(progressTrail);
+                    syncItem.ForeignFields["attachments"] = attachments;
+
+                    //// Fetch activities belonging to this change
+                    //var changeId = change.Id;
+                    //if (!string.IsNullOrEmpty(changeId))
+                    //{
+                    //    var activities = await GetChangeActivitiesForChangeAsync(changeId);
+                    //    syncItem.ForeignFields["changeActivities"] = activities;
+                    //}
 
                     syncItems.Add(syncItem);
                 }
@@ -183,25 +190,32 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
     /// <summary>
     /// Fetches all change activities linked to a specific operator change.
     /// </summary>
-    /// <param name="changeId">The ID of the operator change.</param>
+    /// <param name="pChangeId">The ID of the operator change.</param>
     /// <returns>An enumerable collection of SyncItem objects representing change activities.</returns>
-    private async Task<IEnumerable<SyncItem>> GetChangeActivitiesForChangeAsync(string changeId)
+    private async Task<IEnumerable<SyncItem>> GetChangeActivitiesForChangeAsync(string pChangeId)
     {
         try
         {
-            var request = CreateBaseRequest($"/tas/api/operatorChanges/{changeId}/operatorChangeActivities");
-            if (request == null) return [];
-
-            var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskChangeActivity>>(request);
-
-            if (response.IsSuccessStatusCode && response.Data is not null)
+            var request = CreateBaseRequest($"/tas/api/operatorChangeActivities");
+            if (request is null)
             {
-                return [.. response.Data.Select(MapChangeActivityToSyncItem)];
+                logger.LogError("Error fetching activities for change {changeId} from TopDesk: Request could not be created.", pChangeId);
+                return [];
+            }
+
+            request.AddQueryParameter("query", $"change.id=={pChangeId}");
+
+            var response = await httpClient.ExecuteAsync<TopDeskChangeActivityResult>(request);
+
+            if (response.IsSuccessStatusCode 
+                && response.Data is not null)
+            {
+                return [.. response.Data.Results.Select(MapChangeActivityToSyncItem)];
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error fetching change activities for change {changeId}", changeId);
+            logger.LogError(ex, "Error fetching change activities for change {changeId}", pChangeId);
         }
         return [];
     }
@@ -229,13 +243,29 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             }
 
             request.AddQueryParameter("pageSize", 50);
-            request.AddQueryParameter("sort", "modificationDate:desc");
+            request.AddQueryParameter("sort", "lastModificationDate:desc");
 
-            var response = await httpClient.ExecuteAsync<IEnumerable<TopDeskChangeActivity>>(request);
+            var response = await httpClient.ExecuteAsync<TopDeskChangeActivityResult>(request);
 
             if (response.IsSuccessStatusCode && response.Data is not null)
             {
-                return [.. response.Data.Select(MapChangeActivityToSyncItem)];
+                List<SyncItem> syncItems = [];
+                foreach (var activity in response.Data.Results)
+                {
+                    var syncItem = MapChangeActivityToSyncItem(activity);
+
+                    var requests = await GetRequestsAsync(activity.Id);
+                    var progressTrail = await GetProgressTrail(activity.Id);
+                    var attachments = await GetAttachmentsAsync(activity.Id);
+
+                    syncItem.Fields["report"] = FormatRequests(requests);
+                    syncItem.ForeignFields["progressTrail"] = FormatProgressTails(progressTrail);
+                    syncItem.ForeignFields["attachments"] = attachments;
+
+                    syncItems.Add(syncItem);
+                }
+
+                return syncItems;
             }
 
             logger.LogError("Error fetching operator change activities from TopDesk. Status: {Status}, Error: {Error}",
@@ -417,8 +447,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         Utilities.AddIfNotNull(fields, "subcategory.name", change.Subcategory?.Name);
         Utilities.AddIfNotNull(fields, "priority.id", change.Priority?.Id);
         Utilities.AddIfNotNull(fields, "priority.name", change.Priority?.Name);
-        Utilities.AddIfNotNull(fields, "changeType.id", change.ChangeType?.Id);
-        Utilities.AddIfNotNull(fields, "changeType.name", change.ChangeType?.Name);
+        Utilities.AddIfNotNull(fields, "changeType", change.ChangeType);
         Utilities.AddIfNotNull(fields, "impact.id", change.Impact?.Id);
         Utilities.AddIfNotNull(fields, "impact.name", change.Impact?.Name);
         Utilities.AddIfNotNull(fields, "benefit.id", change.Benefit?.Id);
@@ -452,7 +481,8 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
 
         // Scalar fields
         Utilities.AddIfNotNull(fields, "id", activity.Id);
-        Utilities.AddIfNotNull(fields, "changeId", activity.ChangeId);
+        Utilities.AddIfNotNull(fields, "change.Id", activity.Change?.Id);
+        Utilities.AddIfNotNull(fields, "change.Name", activity.Change?.Name);
         Utilities.AddIfNotNull(fields, "briefDescription", activity.BriefDescription);
         Utilities.AddIfNotNull(fields, "status", activity.Status);
         Utilities.AddIfNotNull(fields, "plannedStartDate", activity.PlannedStartDate);
@@ -641,7 +671,7 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
             Utilities.AddIfNotNull(fields, "person.id", itm.Person?.Id);
             Utilities.AddIfNotNull(fields, "person.name", itm.Person?.Name);
             Utilities.AddIfNotNull(fields, "flag", itm.Flag);
-            Utilities.AddIfNotNull(fields, "entryDate", (object?)itm.EntryDate);
+            Utilities.AddIfNotNull(fields, "entryDate", itm.EntryDate);
             Utilities.AddIfNotNull(fields, "creationDate", itm.CreationDate);
 
             return new SyncItem { Id = itm.Id, Fields = fields };

@@ -3,32 +3,17 @@ using SyncApp.Helper;
 
 namespace SyncApp.Models.TopDesk;
 
-public record ChangeType(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record Impact(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record Benefit(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
-);
-
-public record Template(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
+public record TopDeskChangeResult(
+    [property: JsonPropertyName("results")] IEnumerable<TopDeskChange> Results
 );
 
 public record TopDeskChange(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("number")] string Number,
     [property: JsonPropertyName("briefDescription")] string BriefDescription,
-    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("status")] TopDeskTuple Status,
     [property: JsonPropertyName("externalNumber")] string ExternalNumber,
+    [property: JsonPropertyName("changeType")] string ChangeType,
     [property: JsonPropertyName("creationDate")]
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     DateTime? CreationDate,
@@ -51,15 +36,14 @@ public record TopDeskChange(
     [property: JsonPropertyName("actualFinalDate")]
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     DateTime? ActualFinalDate,
-    [property: JsonPropertyName("category")] Category Category,
-    [property: JsonPropertyName("subcategory")] Subcategory Subcategory,
-    [property: JsonPropertyName("priority")] Priority Priority,
-    [property: JsonPropertyName("changeType")] ChangeType ChangeType,
-    [property: JsonPropertyName("impact")] Impact Impact,
-    [property: JsonPropertyName("benefit")] Benefit Benefit,
-    [property: JsonPropertyName("template")] Template Template,
-    [property: JsonPropertyName("operatorGroup")] OperatorGroup OperatorGroup,
-    [property: JsonPropertyName("operator")] Operator Operator,
-    [property: JsonPropertyName("creator")] Creator Creator,
-    [property: JsonPropertyName("modifier")] Modifier Modifier
+    [property: JsonPropertyName("category")] TopDeskTuple Category,
+    [property: JsonPropertyName("subcategory")] TopDeskTuple Subcategory,
+    [property: JsonPropertyName("priority")] TopDeskTuple Priority,
+    [property: JsonPropertyName("impact")] TopDeskTuple Impact,
+    [property: JsonPropertyName("benefit")] TopDeskTuple Benefit,
+    [property: JsonPropertyName("template")] TopDeskTuple Template,
+    [property: JsonPropertyName("operatorGroup")] TopDeskTuple OperatorGroup,
+    [property: JsonPropertyName("operator")] TopDeskTuple Operator,
+    [property: JsonPropertyName("creator")] TopDeskTuple Creator,
+    [property: JsonPropertyName("modifier")] TopDeskTuple Modifier
 );

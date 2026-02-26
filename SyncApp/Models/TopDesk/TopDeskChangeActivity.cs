@@ -3,16 +3,15 @@ using SyncApp.Helper;
 
 namespace SyncApp.Models.TopDesk;
 
-public record Assignee(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name
+public record TopDeskChangeActivityResult(
+    [property: JsonPropertyName("results")] IEnumerable<TopDeskChangeActivity> Results
 );
 
 public record TopDeskChangeActivity(
     [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("changeId")] string ChangeId,
+    [property: JsonPropertyName("change")] TopDeskTuple Change,
     [property: JsonPropertyName("briefDescription")] string BriefDescription,
-    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("status")] TopDeskTuple Status,
     [property: JsonPropertyName("plannedStartDate")]
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     DateTime? PlannedStartDate,
@@ -35,11 +34,11 @@ public record TopDeskChangeActivity(
     [property: JsonPropertyName("closedDate")]
     [property: JsonConverter(typeof(TopDeskDateTimeConverter))]
     DateTime? ClosedDate,
-    [property: JsonPropertyName("category")] Category Category,
-    [property: JsonPropertyName("subcategory")] Subcategory Subcategory,
-    [property: JsonPropertyName("operatorGroup")] OperatorGroup OperatorGroup,
-    [property: JsonPropertyName("operator")] Operator Operator,
-    [property: JsonPropertyName("assignee")] Assignee Assignee,
-    [property: JsonPropertyName("creator")] Creator Creator,
-    [property: JsonPropertyName("modifier")] Modifier Modifier
+    [property: JsonPropertyName("category")] TopDeskTuple Category,
+    [property: JsonPropertyName("subcategory")] TopDeskTuple Subcategory,
+    [property: JsonPropertyName("operatorGroup")] TopDeskTuple OperatorGroup,
+    [property: JsonPropertyName("operator")] TopDeskTuple Operator,
+    [property: JsonPropertyName("assignee")] TopDeskTuple Assignee,
+    [property: JsonPropertyName("creator")] TopDeskTuple Creator,
+    [property: JsonPropertyName("modifier")] TopDeskTuple Modifier
 );
