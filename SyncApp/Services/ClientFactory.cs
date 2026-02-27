@@ -30,13 +30,17 @@ public class ClientFactory(IServiceProvider serviceProvider, ILoggerFactory logg
 
     private AzureDevOpsClient CreateAzureDevOpsClient(SystemConfig pConfig)
     {
+        VssBasicCredential credentials;
         if (string.IsNullOrEmpty(pConfig.Url) || string.IsNullOrEmpty(pConfig.Token))
         {
-            throw new InvalidOperationException($"Configuration for Azure DevOps system (URL: {pConfig.Url}) is missing URL or Token.");
+            credentials = new VssBasicCredential();
+            //throw new InvalidOperationException($"Configuration for Azure DevOps system (URL: {pConfig.Url}) is missing URL or Token.");
+        }
+        else
+        {
+            credentials = new VssBasicCredential(string.Empty, pConfig.Token); // Standard für PAT: Benutzername ist leer
         }
 
-        //TODO: Personal access tokens are being deprecated
-        var credentials = new VssBasicCredential(string.Empty, pConfig.Token); // Standard für PAT: Benutzername ist leer
         var connection = new VssConnection(new Uri(pConfig.Url), credentials);
         var witClient = connection.GetClient<WorkItemTrackingHttpClient>();
         return new AzureDevOpsClient(pConfig, witClient, loggerFactory.CreateLogger<AzureDevOpsClient>());

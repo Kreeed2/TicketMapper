@@ -168,7 +168,7 @@
       "external_id_field": "EHA.TFS.TopDesk_unid",
       "fields": [
         {
-          "source": "operator.name",
+          "source": "assignee.name",
           "target": "System.AssignedTo",
           "transform": "lookup"
         },

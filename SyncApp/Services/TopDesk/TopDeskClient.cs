@@ -499,10 +499,8 @@ public class TopDeskClient(SystemConfig config, IRestClient httpClient, ILogger<
         Utilities.AddIfNotNull(fields, "category.name", activity.Category?.Name);
         Utilities.AddIfNotNull(fields, "subcategory.id", activity.Subcategory?.Id);
         Utilities.AddIfNotNull(fields, "subcategory.name", activity.Subcategory?.Name);
-        Utilities.AddIfNotNull(fields, "operatorGroup.id", activity.OperatorGroup?.Id);
-        Utilities.AddIfNotNull(fields, "operatorGroup.name", activity.OperatorGroup?.Name);
-        Utilities.AddIfNotNull(fields, "operator.id", activity.Operator?.Id);
-        Utilities.AddIfNotNull(fields, "operator.name", activity.Operator?.Name);
+        Utilities.AddIfNotNull(fields, "assignee.groupId", activity.Assignee?.GroupId);
+        Utilities.AddIfNotNull(fields, "assignee.groupName", activity.Assignee?.GroupName);
         Utilities.AddIfNotNull(fields, "assignee.id", activity.Assignee?.Id);
         Utilities.AddIfNotNull(fields, "assignee.name", activity.Assignee?.Name);
         Utilities.AddIfNotNull(fields, "creator.id", activity.Creator?.Id);

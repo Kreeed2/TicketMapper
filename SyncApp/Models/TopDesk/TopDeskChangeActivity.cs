@@ -7,6 +7,14 @@ public record TopDeskChangeActivityResult(
     [property: JsonPropertyName("results")] IEnumerable<TopDeskChangeActivity> Results
 );
 
+public record TopDeskAssignee(
+    [property: JsonPropertyName("groupName")] string GroupName,
+    [property: JsonPropertyName("groupId")] string GroupId,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("type")] string Type
+    );
+
 public record TopDeskChangeActivity(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("change")] TopDeskTuple Change,
@@ -36,9 +44,7 @@ public record TopDeskChangeActivity(
     DateTime? ClosedDate,
     [property: JsonPropertyName("category")] TopDeskTuple Category,
     [property: JsonPropertyName("subcategory")] TopDeskTuple Subcategory,
-    [property: JsonPropertyName("operatorGroup")] TopDeskTuple OperatorGroup,
-    [property: JsonPropertyName("operator")] TopDeskTuple Operator,
-    [property: JsonPropertyName("assignee")] TopDeskTuple Assignee,
+    [property: JsonPropertyName("assignee")] TopDeskAssignee Assignee,
     [property: JsonPropertyName("creator")] TopDeskTuple Creator,
     [property: JsonPropertyName("modifier")] TopDeskTuple Modifier
 );
