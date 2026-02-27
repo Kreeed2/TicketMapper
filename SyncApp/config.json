@@ -25,7 +25,7 @@
   ],
   "mappings": [
     {
-      "name": "Incident to Bug - Project A",
+      "name": "Incident to Incident - Project ZESA",
       "source_system": "topdesk_prod",
       "target_system": "ado_dev",
       "source_object": "incident",
@@ -80,6 +80,144 @@
           "target": "attachments",
           "is_foreign": true,
           "transform": "none"
+        },
+        {
+          "source": "processingStatus.name",
+          "target": "System.State",
+          "transform": "value_map",
+          "value_mapping": {
+            "Offen": "Neu",
+            "In Bearbeitung": "Aktiv",
+            "Im Test": "Aktiv",
+            "Warten auf Rückmeldung": "Aktiv",
+            "Kurzfristig Ausgesetzt": "Aktiv",
+            "Langfristig Ausgesetzt": "Aktiv",
+            "Gelöst": "Gelöst"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Change to Epic - Project ZESA",
+      "source_system": "topdesk_prod",
+      "target_system": "ado_dev",
+      "source_object": "operatorchange",
+      "target_object": "Epic",
+      "external_id_field": "EHA.TFS.TopDesk_unid",
+      "fields": [
+        {
+          "source": "operator.name",
+          "target": "System.AssignedTo",
+          "transform": "lookup"
+        },
+        {
+          "source": "briefDescription",
+          "target": "System.Title",
+          "transform": "none"
+        },
+        {
+          "source": "report",
+          "target": "System.Description",
+          "transform": "none",
+          "update": false
+        },
+        {
+          "source": "report",
+          "target": "System.Description",
+          "transform": "none",
+          "update": false
+        },
+        {
+          "source": "number",
+          "target": "EHA.TFS.IncidentNumber",
+          "transform": "none"
+        },
+        {
+          "source": "progressTrail",
+          "target": "Comments",
+          "is_foreign": true,
+          "transform": "none"
+        },
+        {
+          "source": "attachments",
+          "target": "attachments",
+          "is_foreign": true,
+          "transform": "none"
+        },
+        {
+          "source": "processingStatus.name",
+          "target": "System.State",
+          "transform": "value_map",
+          "value_mapping": {
+            "Offen": "Neu",
+            "In Bearbeitung": "Aktiv",
+            "Im Test": "Aktiv",
+            "Warten auf Rückmeldung": "Aktiv",
+            "Aufgeschoben": "Aktiv",
+            "Abgeschlossen": "Gelöst"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ChangeActivity to Changeaktivität - Project ZESA",
+      "source_system": "topdesk_prod",
+      "target_system": "ado_dev",
+      "source_object": "operatorchangeactivity",
+      "target_object": "Changeaktivitaet",
+      "external_id_field": "EHA.TFS.TopDesk_unid",
+      "fields": [
+        {
+          "source": "operator.name",
+          "target": "System.AssignedTo",
+          "transform": "lookup"
+        },
+        {
+          "source": "briefDescription",
+          "target": "System.Title",
+          "transform": "none"
+        },
+        {
+          "source": "report",
+          "target": "System.Description",
+          "transform": "none",
+          "update": false
+        },
+        {
+          "source": "report",
+          "target": "System.Description",
+          "transform": "none",
+          "update": false
+        },
+        {
+          "source": "number",
+          "target": "EHA.TFS.IncidentNumber",
+          "transform": "none"
+        },
+        {
+          "source": "progressTrail",
+          "target": "Comments",
+          "is_foreign": true,
+          "transform": "none"
+        },
+        {
+          "source": "attachments",
+          "target": "attachments",
+          "is_foreign": true,
+          "transform": "none"
+        },
+        {
+          "source": "processingStatus.name",
+          "target": "System.State",
+          "transform": "value_map",
+          "value_mapping": {
+            "Offen": "Neu",
+            "In Bearbeitung": "Aktiv",
+            "Im Test": "Aktiv",
+            "Warten auf Rückmeldung": "Aktiv",
+            "Aufgeschoben": "Aktiv",
+            "Abgeschlossen": "Gelöst"
+          }
         }
       ]
     }
