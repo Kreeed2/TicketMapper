@@ -60,7 +60,7 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
             return null;
         }
 
-        var query = new Wiql() { Query = $"SELECT [ID] FROM WorkItem WHERE [System.WorkItemType] = '{objectType}' AND [{externalIdField}] = '{externalIdValue}'" };
+        var query = new Wiql() { Query = $"SELECT [ID] FROM WorkItem WHERE [System.WorkItemType] = '{objectType}' AND [{externalIdField}] = '{externalIdValue}' AND [System.TeamProject] = @project" };
 
         try
         {
