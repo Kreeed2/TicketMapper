@@ -102,13 +102,34 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
             // 2. Fuegen Sie alle gemappten Felder aus dem SyncItem hinzu
             foreach (var field in pItem.Fields)
             {
-                // Alle Felder werden als 'add'-Operationen hinzugefuegt
-                patchDocument.Add(new JsonPatchOperation()
+                if (field.Key.Contains("LinkTypes", StringComparison.OrdinalIgnoreCase))
                 {
-                    Operation = Operation.Add,
-                    Path = $"/fields/{field.Key}",
-                    Value = field.Value
-                });
+                    // Link type special case -> add to relations instead of fields
+                    patchDocument.Add(new JsonPatchOperation()
+                    {
+                        Operation = Operation.Add,
+                        Path = "/relations/-",
+                        Value = new
+                        {
+                            rel = field.Key,
+                            url = field.Value,
+                            attributes = new
+                            {
+                                comment = "Verknüpfung via API erstellt"
+                            }
+                        }
+                    });
+                }
+                else
+                {
+                    // Alle Felder werden als 'add'-Operationen hinzugefuegt
+                    patchDocument.Add(new JsonPatchOperation()
+                    {
+                        Operation = Operation.Add,
+                        Path = $"/fields/{field.Key}",
+                        Value = field.Value
+                    });
+                }
             }
 
             // 3. Fuegen Sie das externe ID-Feld hinzu, das die ID des Source-Systems speichert
@@ -166,12 +187,33 @@ public class AzureDevOpsClient(SystemConfig pConfig, WorkItemTrackingHttpClient 
 
             foreach (var field in item.Fields)
             {
-                patchDocument.Add(new JsonPatchOperation()
+                if (field.Key.Contains("LinkTypes", StringComparison.OrdinalIgnoreCase))
                 {
-                    Operation = Operation.Add,
-                    Path = $"/fields/{field.Key}",
-                    Value = field.Value
-                });
+                    // Link type special case -> add to relations instead of fields
+                    patchDocument.Add(new JsonPatchOperation()
+                    {
+                        Operation = Operation.Add,
+                        Path = "/relations/-",
+                        Value = new
+                        {
+                            rel = field.Key,
+                            url = field.Value,
+                            attributes = new
+                            {
+                                comment = "Verknüpfung via API erstellt"
+                            }
+                        }
+                    });
+                }
+                else
+                {
+                    patchDocument.Add(new JsonPatchOperation()
+                    {
+                        Operation = Operation.Add,
+                        Path = $"/fields/{field.Key}",
+                        Value = field.Value
+                    });
+                }
             }
 
             await pWitClient.UpdateWorkItemAsync(

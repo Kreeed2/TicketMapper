@@ -106,6 +106,12 @@ namespace SyncApp.Models
 
         [JsonPropertyName("value_mapping")]
         public Dictionary<string, string> ValueMapping { get; set; } = [];
+
+        [JsonPropertyName("search_field")]
+        public string? SearchField { get; set; } = null;
+
+        [JsonPropertyName("search_item_type")]
+        public string? SearchItemType { get; set; } = null;
     }
 
     [JsonConverter(typeof(FieldMappingTransformConverter))]
@@ -117,6 +123,7 @@ namespace SyncApp.Models
         HtmlToMarkdown,
         Pattern,
         ValueMap,
+        ItemSearch,
     }
 
     [JsonConverter(typeof(SystemMappingTypeConverter))]

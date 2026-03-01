@@ -6,10 +6,11 @@ Der **TicketMapper** ist ein .NET-basierter Hintergrunddienst (Worker Service), 
 
 ## 2. Systemvoraussetzungen
 
-* **Laufzeitumgebung:** .NET 8.0 SDK oder Runtime (basierend auf der modernen C#-Syntax).
+* **Laufzeitumgebung:** .NET 10.0 SDK oder Runtime (basierend auf der modernen C#-Syntax).
 * **Netzwerkzugriff:** Die Anwendung benötigt ausgehende HTTPS-Verbindungen zu den APIs von TOPdesk und Azure DevOps.
-* **Berechtigungen:** * **TOPdesk:** API-Benutzer mit Leserechten für Incidents.
-* **Azure DevOps:** Personal Access Token (PAT) mit Schreibrechten für Work Items.
+* **Berechtigungen:**
+    - TOPdesk: API-Benutzer mit Leserechten für Incidents.
+    - Azure DevOps: Personal Access Token (PAT) mit Schreibrechten für Work Items.
 
 ## 3. Konfiguration
 

@@ -17,6 +17,7 @@ public class FieldMappingTransformConverter : JsonConverter<FieldMappingTransfor
             "html_to_markdown" => FieldMappingTransform.HtmlToMarkdown,
             "pattern" => FieldMappingTransform.Pattern,
             "value_map" => FieldMappingTransform.ValueMap,
+            "item_search" => FieldMappingTransform.ItemSearch,
             _ => throw new JsonException($"Unknown FieldMappingTransform '{s}'")
         };
     }
@@ -31,6 +32,7 @@ public class FieldMappingTransformConverter : JsonConverter<FieldMappingTransfor
             FieldMappingTransform.HtmlToMarkdown => "html_to_markdown",
             FieldMappingTransform.Pattern => "pattern",
             FieldMappingTransform.ValueMap => "value_map",
+            FieldMappingTransform.ItemSearch => "item_search",
             _ => throw new JsonException($"Unknown FieldMappingTransform '{value}'")
         };
         writer.WriteStringValue(s);

@@ -29,6 +29,9 @@ public class TransformerFactory(IServiceProvider pServiceProvider)
             case FieldMappingTransform.Pattern:
                 var service = pServiceProvider.GetRequiredService<UserTransformer>();
                 return service.Configure(mSourceSystem, mTargetSystem, pFieldMapping);
+            case FieldMappingTransform.ItemSearch:
+                var searchService = pServiceProvider.GetRequiredService<AzureDevOpsItemSearchTransformer>();
+                return searchService.Configure(mSourceSystem, mTargetSystem, pFieldMapping);
             default:
                 throw new NotImplementedException();
         }
